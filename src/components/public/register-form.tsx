@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { registerForWebinar, type RegisterState } from "@/app/actions/register";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUserTimezone } from "@/hooks/use-user-timezone";
 
 const initialState: RegisterState = { status: "idle" };
 
@@ -24,6 +25,7 @@ export function RegisterForm({
   ctaLabel: string;
 }) {
   const [state, formAction] = useFormState(registerForWebinar, initialState);
+  const userTz = useUserTimezone();
 
   if (state.status === "success") {
     return (
@@ -56,6 +58,7 @@ export function RegisterForm({
   return (
     <form className="space-y-4" action={formAction}>
       <input type="hidden" name="slug" value={slug} />
+      {userTz ? <input type="hidden" name="user_tz" value={userTz} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <Input
           label="First name"

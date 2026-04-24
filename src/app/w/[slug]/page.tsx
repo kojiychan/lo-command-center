@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getPublicWebinarLanding } from "@/server/public-webinar";
-import { formatWebinarDate } from "@/lib/format";
 import { RegisterForm } from "@/components/public/register-form";
 import { CountdownTimer } from "@/components/public/countdown-timer";
+import { WebinarTime } from "@/components/public/webinar-time";
+import { formatInTimeZone } from "@/lib/timezone-utils";
 
 export default async function PublicWebinarPage({ params }: { params: { slug: string } }) {
   const res = await getPublicWebinarLanding(params.slug);
@@ -39,10 +40,9 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoPill
-                  label="Date & time"
-                  value={formatWebinarDate(w.starts_at, w.timezone)}
-                />
+                <InfoPill label="Date & time">
+                  <WebinarTime startsAtIsoUtc={w.starts_at} webinarTimeZone={w.timezone} />
+                </InfoPill>
                 <InfoPill label="Hosted by" value={`${w.host_name} · Mortgage Loan Officer`} />
               </div>
 
@@ -329,7 +329,9 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-1">
           <div className="min-w-0">
             <div className="truncate text-xs font-semibold text-slate-900">Free live webinar</div>
-            <div className="truncate text-xs text-slate-600">{formatWebinarDate(w.starts_at, w.timezone)}</div>
+            <div className="truncate text-xs text-slate-600">
+              {formatInTimeZone(w.starts_at, w.timezone)}
+            </div>
           </div>
           <a
             href="#register"
@@ -344,11 +346,23 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function InfoPill({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+      {children ? (
+        <div className="mt-1">{children}</div>
+      ) : (
+        <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+      )}
     </div>
   );
 }

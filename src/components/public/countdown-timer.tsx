@@ -24,12 +24,18 @@ function useCountdown(targetDate: string | Date): CountdownState {
     return d.getTime();
   }, [targetDate]);
 
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    // Avoid hydration mismatches by only starting the clock on the client.
+    setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  if (now === null) {
+    return { status: "counting", parts: { days: 0, hours: 0, minutes: 0, seconds: 0 } };
+  }
 
   if (!Number.isFinite(target)) {
     return { status: "past" };
@@ -131,6 +137,7 @@ function TimeBox({
           "text-emerald-700",
           emphasize ? "text-4xl sm:text-5xl" : "text-3xl",
         ].join(" ")}
+        suppressHydrationWarning
       >
         {value}
       </div>
