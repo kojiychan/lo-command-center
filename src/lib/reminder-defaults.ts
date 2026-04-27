@@ -1,4 +1,4 @@
-import type { ReminderTemplateKey } from "@/types/database";
+import type { ReminderTemplateKey } from "@/domain/reminders";
 
 export type TemplateSeed = {
   template_key: ReminderTemplateKey;
@@ -128,6 +128,69 @@ No pressure — just clarity.
 
 — {{host}}`,
     sms_body: `{{first_name}}, great having you at "{{title}}". Want a 15-min plan? Reply BOOK and {{host}} will send times.`,
+    email_enabled: true,
+    sms_enabled: true,
+  },
+  {
+    template_key: "attended_cta",
+    email_subject: "Ready for your personalized homebuying game plan?",
+    email_body: `Hi {{first_name}},
+
+Thanks again for attending "{{title}}".
+
+The best next step is a quick one-on-one plan: we can map out your price range, down payment options, and what to prep before pre-approval.
+
+Book a time here: {{book_call_link}}
+
+— {{host}}`,
+    sms_body: `{{first_name}}, thanks for joining. Want your personalized plan? Reply BOOK and {{host}} will send times.`,
+    email_enabled: true,
+    sms_enabled: true,
+  },
+  {
+    template_key: "no_show_one_on_one",
+    email_subject: "Missed the webinar? We can still map out your next step",
+    email_body: `Hi {{first_name}},
+
+Sorry we missed you at "{{title}}".
+
+If homebuying is still on your mind, we can do a short one-on-one session instead and cover the parts that matter most for your situation.
+
+Grab a time here: {{book_call_link}}
+
+— {{host}}`,
+    sms_body: `{{first_name}}, sorry we missed you. Want a quick 1:1 homebuyer plan instead? Reply YES and {{host}} will send times.`,
+    email_enabled: true,
+    sms_enabled: true,
+  },
+  {
+    template_key: "booked_call_prep",
+    email_subject: "Before our call: quick prep checklist",
+    email_body: `Hi {{first_name}},
+
+Looking forward to our call after "{{title}}".
+
+To make it useful, bring rough monthly budget goals, income questions, and any questions about credit, DPA, or timing. No need to have everything perfect.
+
+Talk soon,
+{{host}}`,
+    sms_body: `{{first_name}}, before our call: bring budget goals + questions about credit/DPA/timing. Talk soon — {{host}}`,
+    email_enabled: true,
+    sms_enabled: true,
+  },
+  {
+    template_key: "closed_client_onboarding",
+    email_subject: "Welcome — here’s what happens next",
+    email_body: `Hi {{first_name}},
+
+Excited to help you move forward.
+
+Next, we’ll get your client onboarding started, confirm documents, and outline the milestones from here so nothing feels mysterious.
+
+I’ll follow up with your next checklist shortly.
+
+— {{host}}`,
+    sms_body: `{{first_name}}, welcome aboard. Next up: onboarding checklist + document steps. I’ll send details shortly — {{host}}`,
     email_enabled: true,
     sms_enabled: true,
   },

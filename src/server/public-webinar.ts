@@ -1,12 +1,35 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type PublicPresenter = {
+  full_name: string | null;
+  short_bio: string | null;
+  years_experience: number | null;
+  families_helped: number | null;
+  total_loan_volume: string | null;
+  specialty_focus: string | null;
+  license_states: string | null;
+  profile_image_url: string | null;
+};
+
+export type PublicTestimonial = {
+  id: string;
+  reviewer_name: string;
+  reviewer_context: string | null;
+  review_text: string;
+  rating: number;
+  display_order: number;
+};
+
 export type PublicWebinarLanding = {
   slug: string;
   headline: string;
   subheadline: string | null;
   button_text: string;
   hero_image_url: string | null;
+  presenter: PublicPresenter | null;
+  testimonials: PublicTestimonial[];
   webinar: {
+    user_id: string;
     title: string;
     description: string | null;
     starts_at: string;
@@ -40,6 +63,7 @@ export async function getPublicWebinarLanding(
       button_text,
       hero_image_url,
       webinars (
+        user_id,
         title,
         description,
         starts_at,
@@ -64,6 +88,7 @@ export async function getPublicWebinarLanding(
   const w = (Array.isArray(rawWebinar) ? rawWebinar[0] : rawWebinar) as
     | {
         title: string;
+        user_id: string;
         description: string | null;
         starts_at: string;
         timezone: string;
@@ -77,6 +102,22 @@ export async function getPublicWebinarLanding(
     return { error: "Not found" };
   }
 
+  const [{ data: profile }, { data: testimonials }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select(
+        "full_name, short_bio, years_experience, families_helped, total_loan_volume, specialty_focus, license_states, profile_image_url",
+      )
+      .eq("id", w.user_id)
+      .maybeSingle(),
+    admin
+      .from("testimonials")
+      .select("id, reviewer_name, reviewer_context, review_text, rating, display_order")
+      .eq("user_id", w.user_id)
+      .order("display_order", { ascending: true })
+      .limit(3),
+  ]);
+
   return {
     data: {
       slug: data.slug,
@@ -84,7 +125,10 @@ export async function getPublicWebinarLanding(
       subheadline: data.subheadline,
       button_text: data.button_text,
       hero_image_url: data.hero_image_url,
+      presenter: profile ?? null,
+      testimonials: testimonials ?? [],
       webinar: {
+        user_id: w.user_id,
         title: w.title,
         description: w.description,
         starts_at: w.starts_at,

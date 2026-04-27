@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
-import { getPublicWebinarLanding } from "@/server/public-webinar";
+import {
+  getPublicWebinarLanding,
+  type PublicPresenter,
+  type PublicTestimonial,
+} from "@/server/public-webinar";
 import { RegisterForm } from "@/components/public/register-form";
 import { CountdownTimer } from "@/components/public/countdown-timer";
 import { WebinarTime } from "@/components/public/webinar-time";
@@ -13,6 +17,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
 
   const { data } = res;
   const w = data.webinar;
+  const presenterName = data.presenter?.full_name ?? w.host_name;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -195,75 +200,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
         </div>
       </section>
 
-      {/* Trust / Credibility */}
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-5">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Hosted by {w.host_name}
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Mortgage Loan Officer · First-time buyer education focused
-            </p>
+      <PresenterSection presenter={data.presenter} presenterName={presenterName} />
 
-            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-slate-100 ring-1 ring-slate-200" />
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">
-                    Professional, no-pressure guidance
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    Educational session designed to reduce confusion and help you make smart next steps.
-                  </div>
-                </div>
-              </div>
-              <ul className="mt-5 space-y-2 text-sm text-slate-700">
-                <li className="flex gap-2">
-                  <span className="mt-0.5 text-emerald-600">✓</span>
-                  Helped hundreds of buyers understand options before they shop
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-0.5 text-emerald-600">✓</span>
-                  Experience with down payment assistance + first-time programs
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-0.5 text-emerald-600">✓</span>
-                  Clear explanations — no jargon, no judgment
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="lg:col-span-7">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900">A quick note on trust</div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                You’ll learn the process and programs first. If you want personal numbers afterward, we’ll offer a
-                short optional consult — but the webinar is designed to stand on its own.
-              </p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <ProofCard
-                  title="Clear steps"
-                  body="Understand what happens before you make an offer."
-                />
-                <ProofCard
-                  title="Realistic expectations"
-                  body="Know what matters for approval — and what doesn’t."
-                />
-                <ProofCard
-                  title="Practical next steps"
-                  body="Leave with a simple checklist you can use this week."
-                />
-                <ProofCard
-                  title="Optional help"
-                  body="If you want, book a quick follow-up after the session."
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {data.testimonials.length > 0 ? (
+        <TestimonialsSection testimonials={data.testimonials} />
+      ) : null}
 
       {/* FAQ */}
       <section className="border-t border-slate-200 bg-white">
@@ -391,6 +332,124 @@ function BenefitCard({
   );
 }
 
+function PresenterSection({
+  presenter,
+  presenterName,
+}: {
+  presenter: PublicPresenter | null;
+  presenterName: string;
+}) {
+  const highlights = [
+    presenter?.years_experience != null
+      ? { label: "Years experience", value: `${presenter.years_experience}+` }
+      : null,
+    presenter?.families_helped != null
+      ? { label: "Families helped", value: `${presenter.families_helped}+` }
+      : null,
+    presenter?.total_loan_volume ? { label: "Loan volume", value: presenter.total_loan_volume } : null,
+    presenter?.specialty_focus ? { label: "Focus", value: presenter.specialty_focus } : null,
+    presenter?.license_states ? { label: "Licensed in", value: presenter.license_states } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-12">
+      <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
+        <div className="lg:col-span-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Meet Your Presenter
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Learn from the person guiding this session.
+          </p>
+        </div>
+
+        <div className="lg:col-span-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              {presenter?.profile_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={presenter.profile_image_url}
+                  alt={presenterName}
+                  className="h-24 w-24 rounded-3xl border border-slate-200 object-cover shadow-sm"
+                />
+              ) : (
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-emerald-50 text-2xl font-semibold text-emerald-800 ring-1 ring-emerald-100">
+                  {initials(presenterName)}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="text-xl font-semibold text-slate-900">{presenterName}</div>
+                {presenter?.short_bio ? (
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{presenter.short_bio}</p>
+                ) : (
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                    Join a practical, education-first webinar built to help you understand your next step.
+                  </p>
+                )}
+
+                {highlights.length > 0 ? (
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {highlights.map((item) => (
+                      <ProofCard key={item.label} title={item.value} body={item.label} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialsSection({
+  testimonials,
+}: {
+  testimonials: PublicTestimonial[];
+}) {
+  return (
+    <section className="border-y border-slate-200 bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-12">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Trusted by Buyers Like You
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Past clients shared what it felt like to get clearer guidance.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          {testimonials.map((testimonial) => (
+            <div
+              key={testimonial.id}
+              className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm"
+            >
+              <div className="text-sm font-semibold text-amber-500">
+                {"★".repeat(testimonial.rating)}
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-slate-700">
+                “{testimonial.review_text}”
+              </p>
+              <div className="mt-5">
+                <div className="text-sm font-semibold text-slate-900">
+                  {testimonial.reviewer_name}
+                </div>
+                {testimonial.reviewer_context ? (
+                  <div className="text-xs text-slate-500">{testimonial.reviewer_context}</div>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ProofCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -399,6 +458,16 @@ function ProofCard({ title, body }: { title: string; body: string }) {
     </div>
   );
 }
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 
 function Faq({ q, a }: { q: string; a: string }) {
   return (

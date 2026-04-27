@@ -1,195 +1,109 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import {
+  followUpStatusSchema,
+  leadStatusSchema,
+  postWebinarSequenceSchema,
+} from "@/domain/leads";
+import { getCurrentUser } from "@/server/auth/current-user";
+import {
+  addLeadNoteForUser,
+  mockSendFollowUpForUser,
+  runPostWebinarSequenceForUser,
+  updateLeadFollowUpForUser,
+  updateLeadStatusForUser,
+} from "@/server/services/leads";
 import type { FollowUpStatus, LeadStatus } from "@/types/database";
 
-const statusSchema = z.enum([
-  "registered",
-  "attended",
-  "no_show",
-  "booked_call",
-  "closed",
-]);
-
-const followUpSchema = z.enum(["none", "pending", "sent", "converted"]);
-
-async function assertLeadOwnership(leadId: string, userId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("leads")
-    .select("id, webinar_id")
-    .eq("id", leadId)
-    .maybeSingle();
-
-  if (error || !data) {
-    return { ok: false as const, error: "Lead not found" };
-  }
-
-  const { data: webinar, error: webinarError } = await supabase
-    .from("webinars")
-    .select("id")
-    .eq("id", data.webinar_id)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (webinarError || !webinar) {
-    return { ok: false as const, error: "Not allowed" };
-  }
-
-  return { ok: true as const, webinarId: data.webinar_id };
+function revalidateLeadViews(webinarId: string) {
+  revalidatePath(`/webinars/${webinarId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/pipeline");
 }
 
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
-  const parsed = statusSchema.safeParse(status);
+  const parsed = leadStatusSchema.safeParse(status);
   if (!parsed.success) {
     return { error: "Invalid status" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return { error: "Unauthorized" };
   }
 
-  const gate = await assertLeadOwnership(leadId, user.id);
-  if (!gate.ok) {
-    return { error: gate.error };
+  const result = await updateLeadStatusForUser(leadId, parsed.data, user.id);
+  if ("ok" in result && result.ok) {
+    revalidateLeadViews(result.webinarId);
   }
-
-  const { error } = await supabase
-    .from("leads")
-    .update({ status: parsed.data })
-    .eq("id", leadId);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/webinars/${gate.webinarId}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
+  return "ok" in result && result.ok ? { ok: true } : result;
 }
 
 export async function updateLeadFollowUp(
   leadId: string,
   followUpStatus: FollowUpStatus,
 ) {
-  const parsed = followUpSchema.safeParse(followUpStatus);
+  const parsed = followUpStatusSchema.safeParse(followUpStatus);
   if (!parsed.success) {
     return { error: "Invalid follow-up status" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return { error: "Unauthorized" };
   }
 
-  const gate = await assertLeadOwnership(leadId, user.id);
-  if (!gate.ok) {
-    return { error: gate.error };
+  const result = await updateLeadFollowUpForUser(leadId, parsed.data, user.id);
+  if ("ok" in result && result.ok) {
+    revalidateLeadViews(result.webinarId);
   }
-
-  const { error } = await supabase
-    .from("leads")
-    .update({ follow_up_status: parsed.data })
-    .eq("id", leadId);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/webinars/${gate.webinarId}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
+  return "ok" in result && result.ok ? { ok: true } : result;
 }
 
 export async function addLeadNote(leadId: string, body: string) {
-  const text = body.trim();
-  if (text.length < 1) {
-    return { error: "Note is empty" };
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return { error: "Unauthorized" };
   }
 
-  const gate = await assertLeadOwnership(leadId, user.id);
-  if (!gate.ok) {
-    return { error: gate.error };
+  const result = await addLeadNoteForUser(leadId, body, user.id);
+  if ("ok" in result && result.ok) {
+    revalidatePath(`/webinars/${result.webinarId}`);
   }
-
-  const { error } = await supabase.from("lead_notes").insert({
-    lead_id: leadId,
-    user_id: user.id,
-    body: text,
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/webinars/${gate.webinarId}`);
-  return { ok: true };
+  return "ok" in result && result.ok ? { ok: true } : result;
 }
 
-/**
- * MVP "send follow-up" — marks pipeline state and stamps a provider_message on recent post-webinar reminder rows.
- *
- * Integration point: enqueue email/SMS via SendGrid + Twilio using rendered templates from `reminder_templates`.
- */
 export async function mockSendFollowUp(leadId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return { error: "Unauthorized" };
   }
 
-  const gate = await assertLeadOwnership(leadId, user.id);
-  if (!gate.ok) {
-    return { error: gate.error };
+  const result = await mockSendFollowUpForUser(leadId, user.id);
+  if ("ok" in result && result.ok) {
+    revalidateLeadViews(result.webinarId);
+  }
+  return "ok" in result && result.ok ? { ok: true } : result;
+}
+
+export async function runPostWebinarSequence(
+  leadId: string,
+  sequence: unknown,
+) {
+  const parsed = postWebinarSequenceSchema.safeParse(sequence);
+  if (!parsed.success) {
+    return { error: "Invalid sequence" };
   }
 
-  const { error: leadError } = await supabase
-    .from("leads")
-    .update({ follow_up_status: "sent" })
-    .eq("id", leadId);
-
-  if (leadError) {
-    return { error: leadError.message };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
   }
 
-  const { error: eventsError } = await supabase
-    .from("reminder_events")
-    .update({
-      status: "sent",
-      provider_message:
-        "MOCK: follow-up queued (wire SendGrid/Twilio here using `reminder_templates.post_followup`).",
-    })
-    .eq("lead_id", leadId)
-    .eq("template_key", "post_followup");
-
-  if (eventsError) {
-    return { error: eventsError.message };
+  const result = await runPostWebinarSequenceForUser(leadId, parsed.data, user.id);
+  if ("ok" in result && result.ok) {
+    revalidateLeadViews(result.webinarId);
   }
-
-  revalidatePath(`/webinars/${gate.webinarId}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
+  return "ok" in result && result.ok ? { ok: true, sequence: result.sequence } : result;
 }

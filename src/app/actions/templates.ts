@@ -1,55 +1,45 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import type { ReminderTemplateKey } from "@/types/database";
+import { reminderTemplateKeySchema } from "@/domain/reminders";
+import { getCurrentUser } from "@/server/auth/current-user";
+import {
+  updateUserReminderTemplateForUser,
+  updateWebinarReminderTemplateForUser,
+} from "@/server/services/templates";
 
-const keySchema = z.enum([
-  "confirmation",
-  "day_before",
-  "morning_of",
-  "one_hour",
-  "ten_min",
-  "started",
-  "post_followup",
-]);
+function parseTemplateForm(formData: FormData) {
+  const templateKey = reminderTemplateKeySchema.safeParse(
+    String(formData.get("template_key") ?? ""),
+  );
+
+  if (!templateKey.success) {
+    return null;
+  }
+
+  return {
+    templateKey: templateKey.data,
+    emailEnabled: String(formData.get("email_enabled") ?? "") === "on",
+    smsEnabled: String(formData.get("sms_enabled") ?? "") === "on",
+    emailSubject: String(formData.get("email_subject") ?? "").trim(),
+    emailBody: String(formData.get("email_body") ?? ""),
+    smsBody: String(formData.get("sms_body") ?? ""),
+  };
+}
 
 export async function updateUserReminderTemplate(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return;
   }
 
-  const templateKey = keySchema.safeParse(String(formData.get("template_key") ?? ""));
-  if (!templateKey.success) {
+  const input = parseTemplateForm(formData);
+  if (!input) {
     return;
   }
 
-  const emailEnabled = String(formData.get("email_enabled") ?? "") === "on";
-  const smsEnabled = String(formData.get("sms_enabled") ?? "") === "on";
-  const emailSubject = String(formData.get("email_subject") ?? "").trim();
-  const emailBody = String(formData.get("email_body") ?? "");
-  const smsBody = String(formData.get("sms_body") ?? "");
-
-  const { error } = await supabase
-    .from("reminder_templates")
-    .update({
-      email_enabled: emailEnabled,
-      sms_enabled: smsEnabled,
-      email_subject: emailSubject.length ? emailSubject : null,
-      email_body: emailBody,
-      sms_body: smsBody,
-    })
-    .eq("user_id", user.id)
-    .is("webinar_id", null)
-    .eq("template_key", templateKey.data);
-
-  if (error) {
+  const result = await updateUserReminderTemplateForUser(user.id, input);
+  if ("error" in result) {
     return;
   }
 
@@ -57,52 +47,19 @@ export async function updateUserReminderTemplate(formData: FormData): Promise<vo
 }
 
 export async function updateWebinarReminderTemplate(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return;
   }
 
   const webinarId = String(formData.get("webinar_id") ?? "");
-  const templateKey = keySchema.safeParse(String(formData.get("template_key") ?? ""));
-  if (!webinarId || !templateKey.success) {
+  const input = parseTemplateForm(formData);
+  if (!webinarId || !input) {
     return;
   }
 
-  const { data: webinar, error: webinarError } = await supabase
-    .from("webinars")
-    .select("id")
-    .eq("id", webinarId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (webinarError || !webinar) {
-    return;
-  }
-
-  const emailEnabled = String(formData.get("email_enabled") ?? "") === "on";
-  const smsEnabled = String(formData.get("sms_enabled") ?? "") === "on";
-  const emailSubject = String(formData.get("email_subject") ?? "").trim();
-  const emailBody = String(formData.get("email_body") ?? "");
-  const smsBody = String(formData.get("sms_body") ?? "");
-
-  const { error } = await supabase
-    .from("reminder_templates")
-    .update({
-      email_enabled: emailEnabled,
-      sms_enabled: smsEnabled,
-      email_subject: emailSubject.length ? emailSubject : null,
-      email_body: emailBody,
-      sms_body: smsBody,
-    })
-    .eq("user_id", user.id)
-    .eq("webinar_id", webinarId)
-    .eq("template_key", templateKey.data as ReminderTemplateKey);
-
-  if (error) {
+  const result = await updateWebinarReminderTemplateForUser(user.id, webinarId, input);
+  if ("error" in result) {
     return;
   }
 

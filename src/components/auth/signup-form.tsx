@@ -1,33 +1,225 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useFormState } from "react-dom";
 import { signUp } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type State = { error: string | null; message: string | null };
 
+type ReviewDraft = {
+  reviewerName: string;
+  reviewerContext: string;
+  reviewText: string;
+  rating: string;
+};
+
 const initialState: State = { error: null, message: null };
+
+const blankReview = (): ReviewDraft => ({
+  reviewerName: "",
+  reviewerContext: "",
+  reviewText: "",
+  rating: "5",
+});
 
 export function SignupForm() {
   const [state, formAction] = useFormState(signUp, initialState);
+  const [step, setStep] = useState(0);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    shortBio: "",
+    profileImageUrl: "",
+    yearsExperience: "",
+    familiesHelped: "",
+    totalLoanVolume: "",
+    specialtyFocus: "",
+    licenseStates: "",
+    reviews: [blankReview(), blankReview(), blankReview()],
+  });
+
+  const steps = useMemo(
+    () => [
+      "Bio",
+      "Highlights",
+      "Review 1",
+      "Review 2",
+      "Review 3",
+    ],
+    [],
+  );
+
+  function updateReview(index: number, patch: Partial<ReviewDraft>) {
+    setForm((current) => ({
+      ...current,
+      reviews: current.reviews.map((review, idx) =>
+        idx === index ? { ...review, ...patch } : review,
+      ),
+    }));
+  }
+
+  function validateStep(currentStep: number) {
+    if (currentStep === 0) {
+      if (!form.fullName.trim()) return "Full name is required.";
+      if (!form.email.trim()) return "Work email is required.";
+      if (form.password.length < 8) return "Use a password with at least 8 characters.";
+      if (form.shortBio.trim().length < 20) {
+        return "Bio is required. Add at least 2 sentences so attendees know why to trust you.";
+      }
+    }
+
+    if (currentStep >= 2) {
+      const review = form.reviews[currentStep - 2];
+      if (!review.reviewerName.trim()) return `Review ${currentStep - 1} needs a reviewer name.`;
+      if (review.reviewText.trim().length < 20) {
+        return `Review ${currentStep - 1} needs at least 20 characters of review text.`;
+      }
+    }
+
+    return null;
+  }
+
+  function goNext() {
+    const error = validateStep(step);
+    if (error) {
+      setClientError(error);
+      return;
+    }
+
+    setClientError(null);
+    setStep((current) => Math.min(current + 1, steps.length - 1));
+  }
 
   return (
-    <form className="space-y-4" action={formAction}>
-      <Input label="Full name" name="full_name" autoComplete="name" required />
-      <Input label="Work email" name="email" type="email" autoComplete="email" required />
-      <Input
-        label="Password"
-        name="password"
-        type="password"
-        autoComplete="new-password"
-        required
-        hint="Use at least 8 characters. You’ll use this to manage registrants and reminders."
-      />
+    <form className="space-y-6" action={formAction}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Step {step + 1} of {steps.length}
+        </div>
+        <div className="text-xs font-medium text-slate-500">{steps[step]}</div>
+      </div>
 
-      {state.error ? (
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-emerald-600 transition-all"
+          style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+        />
+      </div>
+
+      {step === 0 ? (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Tell buyers why they can trust you</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              This bio will appear on your webinar landing pages.
+            </p>
+          </div>
+          <Input
+            label="Full name"
+            autoComplete="name"
+            value={form.fullName}
+            onChange={(event) => setForm({ ...form, fullName: event.target.value })}
+            required
+          />
+          <Input
+            label="Work email"
+            type="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            required
+          />
+          <Input
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            required
+            hint="Use at least 8 characters. You’ll use this to manage registrants and reminders."
+          />
+          <Textarea
+            label="Presenter bio"
+            value={form.shortBio}
+            onChange={(event) => setForm({ ...form, shortBio: event.target.value })}
+            required
+            hint="Write 2–4 sentences about who you are, who you help, and why people should trust you."
+          />
+          <Input
+            label="Presenter headshot/profile image URL"
+            type="url"
+            value={form.profileImageUrl}
+            onChange={(event) => setForm({ ...form, profileImageUrl: event.target.value })}
+            placeholder="https://..."
+            hint="Optional for now. Paste a hosted image URL; it will show on webinar landing pages."
+          />
+        </div>
+      ) : null}
+
+      {step === 1 ? (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Add credibility highlights</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              These are optional. Skip anything you do not want displayed globally.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Years experience"
+              type="number"
+              min={0}
+              value={form.yearsExperience}
+              onChange={(event) => setForm({ ...form, yearsExperience: event.target.value })}
+            />
+            <Input
+              label="Families helped"
+              type="number"
+              min={0}
+              value={form.familiesHelped}
+              onChange={(event) => setForm({ ...form, familiesHelped: event.target.value })}
+            />
+          </div>
+          <Input
+            label="Total loan volume"
+            value={form.totalLoanVolume}
+            onChange={(event) => setForm({ ...form, totalLoanVolume: event.target.value })}
+            placeholder="$75M+"
+          />
+          <Input
+            label="Specialty focus"
+            value={form.specialtyFocus}
+            onChange={(event) => setForm({ ...form, specialtyFocus: event.target.value })}
+            placeholder="First-time buyers, FHA, down payment assistance"
+          />
+          <Input
+            label="License states"
+            value={form.licenseStates}
+            onChange={(event) => setForm({ ...form, licenseStates: event.target.value })}
+            hint="Optional presenter credential only. Webinar state/location is set per webinar."
+            placeholder="CA, AZ"
+          />
+        </div>
+      ) : null}
+
+      {step >= 2 ? (
+        <ReviewStep
+          reviewNumber={step - 1}
+          review={form.reviews[step - 2]}
+          onChange={(patch) => updateReview(step - 2, patch)}
+        />
+      ) : null}
+
+      <HiddenSignupFields form={form} />
+
+      {clientError || state.error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          {state.error}
+          {clientError ?? state.error}
         </div>
       ) : null}
 
@@ -37,9 +229,134 @@ export function SignupForm() {
         </div>
       ) : null}
 
-      <Button className="w-full" type="submit">
-        Create account
-      </Button>
+      <div className="flex gap-3">
+        {step > 0 ? (
+          <Button
+            className="flex-1"
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setClientError(null);
+              setStep((current) => current - 1);
+            }}
+          >
+            Back
+          </Button>
+        ) : null}
+        {step < steps.length - 1 ? (
+          <Button className="flex-1" type="button" onClick={goNext}>
+            Continue
+          </Button>
+        ) : (
+          <Button
+            className="flex-1"
+            type="submit"
+            onClick={(event) => {
+              const error = validateStep(step);
+              if (error) {
+                event.preventDefault();
+                setClientError(error);
+              }
+            }}
+          >
+            Create account
+          </Button>
+        )}
+      </div>
     </form>
+  );
+}
+
+function ReviewStep({
+  reviewNumber,
+  review,
+  onChange,
+}: {
+  reviewNumber: number;
+  review: ReviewDraft;
+  onChange: (patch: Partial<ReviewDraft>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Client review {reviewNumber}</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Add a testimonial that can appear on your webinar landing page.
+        </p>
+      </div>
+      <Input
+        label="Reviewer name"
+        value={review.reviewerName}
+        onChange={(event) => onChange({ reviewerName: event.target.value })}
+        required
+      />
+      <Input
+        label="Reviewer context"
+        value={review.reviewerContext}
+        onChange={(event) => onChange({ reviewerContext: event.target.value })}
+        placeholder="First-time buyer"
+        hint="Examples: First-time buyer, Investor, Self-employed borrower, Realtor partner"
+      />
+      <Textarea
+        label="Review text"
+        value={review.reviewText}
+        onChange={(event) => onChange({ reviewText: event.target.value })}
+        required
+        hint="Minimum 20 characters. Keep it specific and believable."
+      />
+      <Input
+        label="Rating"
+        type="number"
+        min={1}
+        max={5}
+        value={review.rating}
+        onChange={(event) => onChange({ rating: event.target.value })}
+        hint="Optional. Defaults to 5."
+      />
+    </div>
+  );
+}
+
+function HiddenSignupFields({
+  form,
+}: {
+  form: {
+    fullName: string;
+    email: string;
+    password: string;
+    shortBio: string;
+    profileImageUrl: string;
+    yearsExperience: string;
+    familiesHelped: string;
+    totalLoanVolume: string;
+    specialtyFocus: string;
+    licenseStates: string;
+    reviews: ReviewDraft[];
+  };
+}) {
+  return (
+    <>
+      <input type="hidden" name="full_name" value={form.fullName} />
+      <input type="hidden" name="email" value={form.email} />
+      <input type="hidden" name="password" value={form.password} />
+      <input type="hidden" name="short_bio" value={form.shortBio} />
+      <input type="hidden" name="profile_image_url" value={form.profileImageUrl} />
+      <input type="hidden" name="years_experience" value={form.yearsExperience} />
+      <input type="hidden" name="families_helped" value={form.familiesHelped} />
+      <input type="hidden" name="total_loan_volume" value={form.totalLoanVolume} />
+      <input type="hidden" name="specialty_focus" value={form.specialtyFocus} />
+      <input type="hidden" name="license_states" value={form.licenseStates} />
+      {form.reviews.map((review, index) => {
+        const idx = index + 1;
+        return (
+          <span key={idx}>
+            <input type="hidden" name={`reviewer_name_${idx}`} value={review.reviewerName} />
+            <input type="hidden" name={`reviewer_context_${idx}`} value={review.reviewerContext} />
+            <input type="hidden" name={`review_text_${idx}`} value={review.reviewText} />
+            <input type="hidden" name={`rating_${idx}`} value={review.rating} />
+          </span>
+        );
+      })}
+    </>
   );
 }

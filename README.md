@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LO Command Center
 
-## Getting Started
+LO Command Center is a Next.js app for loan officers running webinar funnels. It provides webinar landing pages, public registration, reminder templates/events, a lightweight lead pipeline, presenter credibility content, and post-webinar follow-up automations.
 
-First, run the development server:
+## Main Workflows
+
+- Create a webinar and public landing page at `/webinars/new`.
+- Share the public page at `/w/[slug]`.
+- Capture registrants into `leads`.
+- Manage reminder copy and scheduled reminder events per webinar.
+- Review leads on `/dashboard`, `/webinars/[id]`, and `/pipeline`.
+- Drag prospects through the pipeline stages.
+- Trigger mocked post-webinar email/SMS follow-up sequences.
+- Collect presenter bio, highlights, and testimonials during signup for reuse on public landing pages.
+
+## Tech Stack
+
+- Next.js App Router
+- React client/server components
+- TypeScript
+- Tailwind CSS
+- Supabase Auth, Postgres, RLS, and service-role server access
+- Zod for form/action validation
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Useful checks:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Create `.env.local` with:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SITE_URL=
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Notes:
 
-## Deploy on Vercel
+- `SUPABASE_SERVICE_ROLE_KEY` is used only on the server for public registration and public landing page reads that intentionally bypass anonymous table exposure.
+- `NEXT_PUBLIC_SITE_URL` is used for Supabase email confirmation redirects.
+- Reminder sending is mocked. No SendGrid/Twilio credentials are currently used.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Database
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+SQL migrations live in `supabase/migrations/`.
+
+Apply them to a linked Supabase project with your normal Supabase workflow, for example `supabase db push` after project setup.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Domain model](docs/DOMAIN_MODEL.md)
+- [Server actions](docs/SERVER_ACTIONS.md)
+- [Supabase](docs/SUPABASE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Refactor plan](docs/REFACTOR_PLAN.md)
+
+## Current Limitations
+
+- Email/SMS sends are mocked by writing `reminder_events` rows or updating mock provider messages.
+- The lead `status` field currently mixes attendance and sales progression. Moving a lead to `booked_call` removes it from the `attended` count. See `docs/ROADMAP.md` and `docs/DOMAIN_MODEL.md`.
+- Profile image upload is not implemented; signup accepts a hosted image URL.

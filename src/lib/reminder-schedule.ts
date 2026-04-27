@@ -1,6 +1,6 @@
 import { addHours, addMinutes, setHours, setMinutes, setSeconds, subHours, subMinutes, subDays } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
-import type { ReminderTemplateKey } from "@/types/database";
+import type { ReminderTemplateKey } from "@/domain/reminders";
 
 export type ScheduledReminder = {
   template_key: ReminderTemplateKey;

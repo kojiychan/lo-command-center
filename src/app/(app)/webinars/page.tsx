@@ -1,37 +1,18 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatWebinarDate, isUpcoming } from "@/lib/format";
+import { getCurrentUser } from "@/server/auth/current-user";
+import { getWebinarLibrary } from "@/server/queries/webinars";
 
 export default async function WebinarsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) {
     return null;
   }
 
-  const { data: webinars } = await supabase
-    .from("webinars")
-    .select(
-      `
-      id,
-      title,
-      starts_at,
-      timezone,
-      webinar_pages (
-        slug
-      )
-    `,
-    )
-    .eq("user_id", user.id)
-    .order("starts_at", { ascending: true });
-
-  const rows = webinars ?? [];
+  const rows = await getWebinarLibrary(user.id);
 
   return (
     <div className="space-y-6">

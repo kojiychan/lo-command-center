@@ -1,35 +1,47 @@
-export type LeadStatus =
-  | "registered"
-  | "attended"
-  | "no_show"
-  | "booked_call"
-  | "closed";
+import type {
+  FollowUpStatus as DomainFollowUpStatus,
+  LeadStatus as DomainLeadStatus,
+} from "@/domain/leads";
+import type {
+  ReminderChannel as DomainReminderChannel,
+  ReminderEventStatus as DomainReminderEventStatus,
+  ReminderTemplateKey as DomainReminderTemplateKey,
+} from "@/domain/reminders";
 
-export type FollowUpStatus = "none" | "pending" | "sent" | "converted";
+export type LeadStatus = DomainLeadStatus;
 
-export type ReminderTemplateKey =
-  | "confirmation"
-  | "day_before"
-  | "morning_of"
-  | "one_hour"
-  | "ten_min"
-  | "started"
-  | "post_followup";
+export type FollowUpStatus = DomainFollowUpStatus;
 
-export type ReminderChannel = "email" | "sms";
+export type ReminderTemplateKey = DomainReminderTemplateKey;
 
-export type ReminderEventStatus =
-  | "pending"
-  | "queued"
-  | "sent"
-  | "failed"
-  | "skipped";
+export type ReminderChannel = DomainReminderChannel;
+
+export type ReminderEventStatus = DomainReminderEventStatus;
 
 export type Profile = {
   id: string;
   full_name: string | null;
   company_name: string | null;
+  short_bio: string | null;
+  years_experience: number | null;
+  families_helped: number | null;
+  total_loan_volume: string | null;
+  specialty_focus: string | null;
+  license_states: string | null;
+  profile_image_url: string | null;
   created_at: string;
+};
+
+export type Testimonial = {
+  id: string;
+  user_id: string;
+  reviewer_name: string;
+  reviewer_context: string | null;
+  review_text: string;
+  rating: number;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Webinar = {
