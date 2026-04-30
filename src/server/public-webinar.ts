@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { WebinarTemplateId } from "@/domain/webinars";
 
 export type PublicPresenter = {
   full_name: string | null;
@@ -26,10 +27,13 @@ export type PublicWebinarLanding = {
   subheadline: string | null;
   button_text: string;
   hero_image_url: string | null;
+  hero_bullets: string[];
+  agenda_items: string[];
   presenter: PublicPresenter | null;
   testimonials: PublicTestimonial[];
   webinar: {
     user_id: string;
+    template_type: WebinarTemplateId;
     title: string;
     description: string | null;
     starts_at: string;
@@ -62,8 +66,11 @@ export async function getPublicWebinarLanding(
       subheadline,
       button_text,
       hero_image_url,
+      hero_bullets,
+      agenda_items,
       webinars (
         user_id,
+        template_type,
         title,
         description,
         starts_at,
@@ -89,6 +96,7 @@ export async function getPublicWebinarLanding(
     | {
         title: string;
         user_id: string;
+        template_type: WebinarTemplateId;
         description: string | null;
         starts_at: string;
         timezone: string;
@@ -125,10 +133,13 @@ export async function getPublicWebinarLanding(
       subheadline: data.subheadline,
       button_text: data.button_text,
       hero_image_url: data.hero_image_url,
+      hero_bullets: normalizeStringArray(data.hero_bullets),
+      agenda_items: normalizeStringArray(data.agenda_items),
       presenter: profile ?? null,
       testimonials: testimonials ?? [],
       webinar: {
         user_id: w.user_id,
+        template_type: w.template_type,
         title: w.title,
         description: w.description,
         starts_at: w.starts_at,
@@ -138,4 +149,9 @@ export async function getPublicWebinarLanding(
       },
     },
   };
+}
+
+function normalizeStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }

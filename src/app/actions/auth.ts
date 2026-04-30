@@ -3,14 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { domainPrefixSchema, optionalDomainPrefixSchema } from "@/domain/profiles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/server/auth/current-user";
 import { ensureDefaultReminderTemplatesForUser } from "@/server/services/reminders";
 
 const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   password: z.string().min(8, "Use at least 8 characters."),
   fullName: z.string().trim().min(1, "Full name is required."),
+  domainPrefix: domainPrefixSchema,
   shortBio: z
     .string()
     .trim()
@@ -85,6 +88,7 @@ export async function signUp(_prev: unknown, formData: FormData) {
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
     fullName: String(formData.get("full_name") ?? ""),
+    domainPrefix: String(formData.get("domain_prefix") ?? ""),
     shortBio: String(formData.get("short_bio") ?? ""),
     profileImageUrl: String(formData.get("profile_image_url") ?? ""),
     yearsExperience: String(formData.get("years_experience") ?? ""),
@@ -138,6 +142,7 @@ export async function signUp(_prev: unknown, formData: FormData) {
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
     full_name: parsed.data.fullName,
+    domain_prefix: parsed.data.domainPrefix,
     short_bio: parsed.data.shortBio,
     years_experience: optionalNumber(parsed.data.yearsExperience),
     families_helped: optionalNumber(parsed.data.familiesHelped),
@@ -175,4 +180,28 @@ export async function signUp(_prev: unknown, formData: FormData) {
     message:
       "Check your email to confirm your account, then sign in. If email confirmation is disabled in Supabase, you can sign in immediately.",
   };
+}
+
+export async function updateDomainPrefix(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  const parsed = optionalDomainPrefixSchema.safeParse(String(formData.get("domain_prefix") ?? ""));
+  if (!parsed.success) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ domain_prefix: parsed.data })
+    .eq("id", user.id);
+
+  if (error) {
+    return;
+  }
+
+  revalidatePath("/settings");
 }

@@ -6,6 +6,7 @@ import { signUp } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { WEBINAR_BASE_DOMAIN, formatWebinarDomain } from "@/domain/profiles";
 
 type State = { error: string | null; message: string | null };
 
@@ -31,6 +32,7 @@ export function SignupForm() {
   const [clientError, setClientError] = useState<string | null>(null);
   const [form, setForm] = useState({
     fullName: "",
+    domainPrefix: "",
     email: "",
     password: "",
     shortBio: "",
@@ -66,6 +68,9 @@ export function SignupForm() {
   function validateStep(currentStep: number) {
     if (currentStep === 0) {
       if (!form.fullName.trim()) return "Full name is required.";
+      if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(form.domainPrefix.trim().toLowerCase())) {
+        return "Add a domain prefix using letters, numbers, or hyphens.";
+      }
       if (!form.email.trim()) return "Work email is required.";
       if (form.password.length < 8) return "Use a password with at least 8 characters.";
       if (form.shortBio.trim().length < 20) {
@@ -126,6 +131,17 @@ export function SignupForm() {
             onChange={(event) => setForm({ ...form, fullName: event.target.value })}
             required
           />
+          <Input
+            label="Webinar domain prefix"
+            value={form.domainPrefix}
+            onChange={(event) => setForm({ ...form, domainPrefix: event.target.value.toLowerCase() })}
+            required
+            placeholder="arcmortgage"
+            hint={`Your webinar domain will be ${formatWebinarDomain(form.domainPrefix || "arcmortgage")}.`}
+          />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Enter only the text before <span className="font-semibold text-slate-900">.{WEBINAR_BASE_DOMAIN}</span>.
+          </div>
           <Input
             label="Work email"
             type="email"
@@ -322,6 +338,7 @@ function HiddenSignupFields({
 }: {
   form: {
     fullName: string;
+    domainPrefix: string;
     email: string;
     password: string;
     shortBio: string;
@@ -337,6 +354,7 @@ function HiddenSignupFields({
   return (
     <>
       <input type="hidden" name="full_name" value={form.fullName} />
+      <input type="hidden" name="domain_prefix" value={form.domainPrefix} />
       <input type="hidden" name="email" value={form.email} />
       <input type="hidden" name="password" value={form.password} />
       <input type="hidden" name="short_bio" value={form.shortBio} />

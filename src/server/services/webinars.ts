@@ -1,7 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
+import { getWebinarTemplate } from "@/lib/webinarTemplates";
+import { assertWebinarOwner } from "@/server/auth/ownership";
 import { copyDefaultTemplatesToWebinarForUser } from "@/server/services/reminders";
 import type { WebinarFormInput } from "@/domain/webinars";
+
+export type WebinarContentUpdateInput = {
+  title: string;
+  description: string | null;
+  ctaText: string | null;
+  headline: string;
+  subheadline: string | null;
+  heroBullets: string[];
+  agendaItems: string[];
+  buttonText: string;
+};
 
 export async function createWebinarForUser(userId: string, input: WebinarFormInput) {
   const supabase = await createClient();
@@ -11,6 +24,7 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
     .from("webinars")
     .insert({
       user_id: userId,
+      template_type: input.template_type,
       title: input.title,
       description: input.description ?? null,
       starts_at: input.starts_at,
@@ -31,6 +45,8 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
     slug,
     headline: input.headline,
     subheadline: input.subheadline ?? null,
+    hero_bullets: input.hero_bullets,
+    agenda_items: input.agenda_items,
     button_text: input.button_text,
     hero_image_url:
       input.hero_image_url && input.hero_image_url.length > 0
@@ -44,6 +60,73 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
   }
 
   await copyDefaultTemplatesToWebinarForUser(userId, webinar.id);
+  await applyTemplateReminderCopy(webinar.id, input.template_type);
 
   return { ok: true as const, webinarId: webinar.id };
+}
+
+export async function updateWebinarContentForUser(
+  userId: string,
+  webinarId: string,
+  input: WebinarContentUpdateInput,
+) {
+  const gate = await assertWebinarOwner(webinarId, userId);
+  if (!gate.ok) {
+    return { error: gate.error };
+  }
+
+  const supabase = await createClient();
+  const { error: webinarError } = await supabase
+    .from("webinars")
+    .update({
+      title: input.title,
+      description: input.description,
+      cta_text: input.ctaText,
+    })
+    .eq("id", webinarId);
+
+  if (webinarError) {
+    return { error: webinarError.message };
+  }
+
+  const { error: pageError } = await supabase
+    .from("webinar_pages")
+    .update({
+      headline: input.headline,
+      subheadline: input.subheadline,
+      hero_bullets: input.heroBullets,
+      agenda_items: input.agendaItems,
+      button_text: input.buttonText,
+    })
+    .eq("webinar_id", webinarId);
+
+  if (pageError) {
+    return { error: pageError.message };
+  }
+
+  return { ok: true as const };
+}
+
+async function applyTemplateReminderCopy(
+  webinarId: string,
+  templateType: WebinarFormInput["template_type"],
+) {
+  const supabase = await createClient();
+  const template = getWebinarTemplate(templateType);
+
+  for (const reminder of template.reminders) {
+    const { error } = await supabase
+      .from("reminder_templates")
+      .update({
+        email_subject: reminder.emailSubject,
+        email_body: reminder.emailBody,
+        sms_body: reminder.smsBody,
+      })
+      .eq("webinar_id", webinarId)
+      .eq("template_key", reminder.templateKey);
+
+    if (error) {
+      console.error(error);
+    }
+  }
 }

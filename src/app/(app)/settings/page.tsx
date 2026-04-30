@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { REMINDER_LABELS } from "@/lib/constants";
+import { WEBINAR_BASE_DOMAIN, formatWebinarDomain } from "@/domain/profiles";
+import { updateDomainPrefix } from "@/app/actions/auth";
 import { updateUserReminderTemplate } from "@/app/actions/templates";
 import type { ReminderTemplate } from "@/types/database";
 
@@ -17,7 +19,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, company_name")
+    .select("full_name, company_name, domain_prefix")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -53,6 +55,43 @@ export default async function SettingsPage() {
             <dd className="text-slate-900">{profile?.company_name ?? "—"}</dd>
           </div>
         </dl>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Webinar domain"
+          subtitle="Choose the text that appears before your shared webinar domain."
+        />
+        <form action={updateDomainPrefix} className="space-y-4">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Domain prefix
+            </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                name="domain_prefix"
+                defaultValue={profile?.domain_prefix ?? ""}
+                required
+                maxLength={63}
+                pattern="[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
+                placeholder="arcmortgage"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4 sm:max-w-xs"
+              />
+              <span className="text-sm text-slate-600">.{WEBINAR_BASE_DOMAIN}</span>
+            </div>
+          </label>
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            Current domain:{" "}
+            <span className="font-semibold text-slate-900">
+              {formatWebinarDomain(profile?.domain_prefix)}
+            </span>
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" type="submit">
+              Save domain
+            </Button>
+          </div>
+        </form>
       </Card>
 
       <Card>

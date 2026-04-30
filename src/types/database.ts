@@ -7,6 +7,7 @@ import type {
   ReminderEventStatus as DomainReminderEventStatus,
   ReminderTemplateKey as DomainReminderTemplateKey,
 } from "@/domain/reminders";
+import type { WebinarTemplateId as DomainWebinarTemplateId } from "@/domain/webinars";
 
 export type LeadStatus = DomainLeadStatus;
 
@@ -18,10 +19,13 @@ export type ReminderChannel = DomainReminderChannel;
 
 export type ReminderEventStatus = DomainReminderEventStatus;
 
+export type WebinarTemplateId = DomainWebinarTemplateId;
+
 export type Profile = {
   id: string;
   full_name: string | null;
   company_name: string | null;
+  domain_prefix: string | null;
   short_bio: string | null;
   years_experience: number | null;
   families_helped: number | null;
@@ -47,6 +51,7 @@ export type Testimonial = {
 export type Webinar = {
   id: string;
   user_id: string;
+  template_type: WebinarTemplateId;
   title: string;
   description: string | null;
   starts_at: string;
@@ -64,6 +69,8 @@ export type WebinarPage = {
   slug: string;
   headline: string;
   subheadline: string | null;
+  hero_bullets: string[];
+  agenda_items: string[];
   button_text: string;
   hero_image_url: string | null;
   created_at: string;

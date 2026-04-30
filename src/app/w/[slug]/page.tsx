@@ -8,6 +8,7 @@ import { RegisterForm } from "@/components/public/register-form";
 import { CountdownTimer } from "@/components/public/countdown-timer";
 import { WebinarTime } from "@/components/public/webinar-time";
 import { formatInTimeZone } from "@/lib/timezone-utils";
+import { getWebinarTemplate } from "@/lib/webinarTemplates";
 
 export default async function PublicWebinarPage({ params }: { params: { slug: string } }) {
   const res = await getPublicWebinarLanding(params.slug);
@@ -17,6 +18,9 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
 
   const { data } = res;
   const w = data.webinar;
+  const template = getWebinarTemplate(w.template_type);
+  const heroBullets = data.hero_bullets.length > 0 ? data.hero_bullets : template.defaultHeroBullets;
+  const agendaItems = data.agenda_items.length > 0 ? data.agenda_items : template.defaultAgenda;
   const presenterName = data.presenter?.full_name ?? w.host_name;
 
   return (
@@ -28,11 +32,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
           <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
-                Live Webinar for First-Time Buyers
+                Live {template.name} Webinar
               </div>
 
               <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-                {data.headline || "First-Time Homebuyer Webinar: Buy With Less Cash Than You Think"}
+                {data.headline || template.defaultHeadline}
               </h1>
 
               <div className="mt-5">
@@ -40,8 +44,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
               </div>
 
               <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-slate-700">
-                {data.subheadline ||
-                  "A clear, step-by-step walkthrough of down payment assistance, affordability, and pre-approval prep — so you can make confident next moves without feeling overwhelmed."}
+                {data.subheadline || template.defaultSubheadline}
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -51,15 +54,9 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 <InfoPill label="Hosted by" value={`${w.host_name} · Mortgage Loan Officer`} />
               </div>
 
-              {w.cta_text ? (
-                <div className="mt-5 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                  {w.cta_text}
-                </div>
-              ) : (
-                <div className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                  Free to attend · Live Q&A included
-                </div>
-              )}
+              <div className="mt-5 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                {w.cta_text || template.defaultCTA}
+              </div>
 
               {data.hero_image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -74,18 +71,12 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                     What we’ll cover (in plain English)
                   </div>
                   <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                    <li className="flex gap-2">
-                      <span className="mt-0.5 text-emerald-600">✓</span>
-                      How down payment assistance works (and who qualifies)
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-0.5 text-emerald-600">✓</span>
-                      The pre-approval checklist lenders actually use
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-0.5 text-emerald-600">✓</span>
-                      The top 3 mistakes that delay closings for first-time buyers
-                    </li>
+                    {heroBullets.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-0.5 text-emerald-600">✓</span>
+                        {item}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -112,7 +103,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 </div>
 
                 <div className="mt-5">
-                  <RegisterForm slug={data.slug} ctaLabel={data.button_text || "Reserve My Free Spot"} />
+                  <RegisterForm slug={data.slug} ctaLabel={data.button_text || template.defaultCTA} />
                 </div>
 
                 <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
@@ -125,43 +116,26 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
         </div>
       </section>
 
-      {/* Value / Takeaways */}
+      {/* Value / Agenda */}
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            What you’ll walk away with
+            What You’ll Learn
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Clear next steps — whether you’re 60 days out or just testing what’s possible.
+            A practical agenda built for {template.targetAudience.toLowerCase()}.
           </p>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <BenefitCard
-            title="Down payment assistance — demystified"
-            body="Understand the programs, requirements, and how to avoid common “gotchas.”"
-            icon="🏡"
-          />
-          <BenefitCard
-            title="Affordability without guesswork"
-            body="Learn how lenders look at income, debt, and credit so you can estimate your range."
-            icon="💬"
-          />
-          <BenefitCard
-            title="A pre-approval checklist you can use"
-            body="Know what to gather ahead of time to avoid last-minute surprises."
-            icon="✅"
-          />
-          <BenefitCard
-            title="Mistakes that slow buyers down"
-            body="Avoid the common moves that can delay approval or weaken your offer."
-            icon="⚠️"
-          />
-          <BenefitCard
-            title="A simple plan for your next best step"
-            body="Walk away with a clear action plan based on where you are today."
-            icon="🧭"
-          />
+          {agendaItems.map((item, index) => (
+            <BenefitCard
+              key={item}
+              title={item}
+              body="Clear, practical guidance you can use after the session."
+              icon={String(index + 1)}
+            />
+          ))}
         </div>
       </section>
 
@@ -174,18 +148,12 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 Who this webinar is for
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                If you want clarity before you tour homes, this is for you.
+                Best for {template.targetAudience.toLowerCase()}.
               </p>
             </div>
             <div className="lg:col-span-7">
               <ul className="grid gap-3 sm:grid-cols-2">
-                {[
-                  "First-time buyers who feel overwhelmed by the process",
-                  "Renters wondering if buying is realistic (and when)",
-                  "Anyone curious about down payment assistance options",
-                  "Buyers who want to understand pre-approval before talking to agents",
-                  "People who want a clear plan, not a sales pitch",
-                ].map((item) => (
+                {heroBullets.map((item) => (
                   <li
                     key={item}
                     className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
@@ -216,26 +184,9 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
             </p>
           </div>
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <Faq
-              q="Is this webinar really free?"
-              a="Yes. It’s free to attend — the goal is to give you clarity on programs and next steps."
-            />
-            <Faq
-              q="Will there be a replay?"
-              a="Often yes (it depends on the session). If a replay is available, we’ll email it after the webinar."
-            />
-            <Faq
-              q="Is this only for first-time buyers?"
-              a="It’s geared toward first-time buyers, but anyone who wants to understand the process can join."
-            />
-            <Faq
-              q="Do I need to be ready to buy now?"
-              a="No. This is designed to help you plan — whether you’re months away or actively searching."
-            />
-            <Faq
-              q="Will you cover down payment assistance?"
-              a="Yes. We’ll cover how DPA typically works, eligibility basics, and how to avoid common pitfalls."
-            />
+            {template.defaultFaqs.map((faq) => (
+              <Faq key={faq.question} q={faq.question} a={faq.answer} />
+            ))}
           </div>
         </div>
       </section>
@@ -249,8 +200,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 Save your seat before the webinar starts
               </h2>
               <p className="mt-2 text-sm text-slate-700">
-                Join the free webinar and walk away with a clearer homebuying game plan — down payment assistance,
-                pre-approval, and next steps.
+                Join the free webinar and walk away with a clearer plan for your next step.
               </p>
             </div>
             <div className="lg:col-span-4 lg:flex lg:justify-end">
@@ -258,7 +208,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 href="#register"
                 className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 lg:w-auto"
               >
-                Reserve my free spot
+                {data.button_text || template.defaultCTA}
               </a>
             </div>
           </div>
@@ -278,7 +228,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
             href="#register"
             className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           >
-            Reserve seat
+            {data.button_text || template.defaultCTA}
           </a>
         </div>
       </div>

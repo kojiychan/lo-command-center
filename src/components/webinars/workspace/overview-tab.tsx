@@ -2,6 +2,8 @@
 
 import type { ReminderEvent, Webinar, WebinarPage } from "@/types/database";
 import type { OverviewStats } from "@/components/webinars/workspace/types";
+import { Button } from "@/components/ui/button";
+import { updateWebinarContent } from "@/app/actions/webinars";
 
 export function OverviewTab({
   webinar,
@@ -59,6 +61,99 @@ export function OverviewTab({
           ) : null}
         </dl>
       </div>
+
+      <form
+        action={async (formData) => {
+          await updateWebinarContent(formData);
+        }}
+        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-3"
+      >
+        <input type="hidden" name="webinar_id" value={webinar.id} />
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Landing page content</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Edit the content generated from your webinar template.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Webinar title</span>
+            <input
+              name="title"
+              defaultValue={webinar.title}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">CTA line</span>
+            <input
+              name="cta_text"
+              defaultValue={webinar.cta_text ?? ""}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5 lg:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</span>
+            <textarea
+              name="description"
+              defaultValue={webinar.description ?? ""}
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5 lg:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Headline</span>
+            <input
+              name="headline"
+              defaultValue={page.headline}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5 lg:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Subheadline</span>
+            <textarea
+              name="subheadline"
+              defaultValue={page.subheadline ?? ""}
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hero bullets</span>
+            <textarea
+              name="hero_bullets"
+              defaultValue={(page.hero_bullets ?? []).join("\n")}
+              rows={6}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+            <span className="text-xs text-slate-500">One bullet per line.</span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agenda</span>
+            <textarea
+              name="agenda_items"
+              defaultValue={(page.agenda_items ?? []).join("\n")}
+              rows={6}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+            <span className="text-xs text-slate-500">One agenda item per line.</span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Button text</span>
+            <input
+              name="button_text"
+              defaultValue={page.button_text}
+              required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button type="submit" size="sm">Save landing content</Button>
+        </div>
+      </form>
     </div>
   );
 }
