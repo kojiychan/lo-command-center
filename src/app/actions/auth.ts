@@ -9,6 +9,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/server/auth/current-user";
 import { ensureDefaultReminderTemplatesForUser } from "@/server/services/reminders";
 
+type AuthFormState = {
+  error: string | null;
+  message: string | null;
+};
+
 const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   password: z.string().min(8, "Use at least 8 characters."),
@@ -18,7 +23,6 @@ const signupSchema = z.object({
     .string()
     .trim()
     .min(20, "Bio is required. Add at least 2 sentences so attendees know why to trust you."),
-  profileImageUrl: z.union([z.string().trim().url("Enter a valid image URL."), z.literal("")]),
   yearsExperience: z
     .string()
     .trim()
@@ -49,6 +53,58 @@ function optionalNumber(value: number | "") {
 function optionalText(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text.length > 0 ? text : null;
+}
+
+function imageExtension(contentType: string) {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  if (contentType === "image/gif") return "gif";
+  return "jpg";
+}
+
+function getProfileImageFile(formData: FormData) {
+  const value = formData.get("profile_image_file");
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+
+  return value;
+}
+
+async function uploadProfileImage(
+  userId: string,
+  file: File,
+): Promise<{ error: string } | { publicUrl: string }> {
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  const maxSizeBytes = 5 * 1024 * 1024;
+
+  if (!allowedTypes.includes(file.type)) {
+    return { error: "Upload a JPG, PNG, WebP, or GIF profile image." };
+  }
+
+  if (file.size > maxSizeBytes) {
+    return { error: "Profile image must be 5MB or smaller." };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Profile image could not be uploaded because the service role key is missing." };
+  }
+
+  const path = `${userId}/headshot-${Date.now()}.${imageExtension(file.type)}`;
+  const { error } = await admin.storage
+    .from("profile-images")
+    .upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (error) {
+    return { error: error.message ?? "Could not upload profile image." };
+  }
+
+  const { data } = admin.storage.from("profile-images").getPublicUrl(path);
+  return { publicUrl: data.publicUrl };
 }
 
 export async function signOut() {
@@ -83,14 +139,13 @@ export async function signInWithPassword(_prev: unknown, formData: FormData) {
   redirect(next);
 }
 
-export async function signUp(_prev: unknown, formData: FormData) {
+export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFormState> {
   const parsed = signupSchema.safeParse({
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
     fullName: String(formData.get("full_name") ?? ""),
     domainPrefix: String(formData.get("domain_prefix") ?? ""),
     shortBio: String(formData.get("short_bio") ?? ""),
-    profileImageUrl: String(formData.get("profile_image_url") ?? ""),
     yearsExperience: String(formData.get("years_experience") ?? ""),
     familiesHelped: String(formData.get("families_helped") ?? ""),
     totalLoanVolume: String(formData.get("total_loan_volume") ?? ""),
@@ -130,6 +185,15 @@ export async function signUp(_prev: unknown, formData: FormData) {
     return { error: "Account was created, but Supabase did not return a user ID.", message: null };
   }
 
+  const profileImageFile = getProfileImageFile(formData);
+  const profileImageResult = profileImageFile
+    ? await uploadProfileImage(data.user.id, profileImageFile)
+    : null;
+
+  if (profileImageResult && "error" in profileImageResult) {
+    return { error: profileImageResult.error, message: null };
+  }
+
   const admin = createAdminClient();
   if (!admin) {
     return {
@@ -149,7 +213,7 @@ export async function signUp(_prev: unknown, formData: FormData) {
     total_loan_volume: optionalText(parsed.data.totalLoanVolume),
     specialty_focus: optionalText(parsed.data.specialtyFocus),
     license_states: optionalText(parsed.data.licenseStates),
-    profile_image_url: parsed.data.profileImageUrl || null,
+    profile_image_url: profileImageResult?.publicUrl ?? null,
   });
 
   if (profileError) {

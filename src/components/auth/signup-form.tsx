@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormState } from "react-dom";
 import { signUp } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,8 @@ export function SignupForm() {
     email: "",
     password: "",
     shortBio: "",
-    profileImageUrl: "",
+    profileImagePreviewUrl: "",
+    profileImageName: "",
     yearsExperience: "",
     familiesHelped: "",
     totalLoanVolume: "",
@@ -55,6 +56,14 @@ export function SignupForm() {
     ],
     [],
   );
+
+  useEffect(() => {
+    return () => {
+      if (form.profileImagePreviewUrl) {
+        URL.revokeObjectURL(form.profileImagePreviewUrl);
+      }
+    };
+  }, [form.profileImagePreviewUrl]);
 
   function updateReview(index: number, patch: Partial<ReviewDraft>) {
     setForm((current) => ({
@@ -116,8 +125,7 @@ export function SignupForm() {
         />
       </div>
 
-      {step === 0 ? (
-        <div className="space-y-4">
+      <div className={step === 0 ? "space-y-4" : "hidden"}>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Tell buyers why they can trust you</h2>
             <p className="mt-1 text-sm text-slate-600">
@@ -166,16 +174,48 @@ export function SignupForm() {
             required
             hint="Write 2–4 sentences about who you are, who you help, and why people should trust you."
           />
-          <Input
-            label="Presenter headshot/profile image URL"
-            type="url"
-            value={form.profileImageUrl}
-            onChange={(event) => setForm({ ...form, profileImageUrl: event.target.value })}
-            placeholder="https://..."
-            hint="Optional for now. Paste a hosted image URL; it will show on webinar landing pages."
-          />
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Presenter headshot/profile image</span>
+            <input
+              name="profile_image_file"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-emerald-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/30"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setForm((current) => {
+                  if (current.profileImagePreviewUrl) {
+                    URL.revokeObjectURL(current.profileImagePreviewUrl);
+                  }
+                  return {
+                    ...current,
+                    profileImageName: file?.name ?? "",
+                    profileImagePreviewUrl: file ? URL.createObjectURL(file) : "",
+                  };
+                });
+              }}
+            />
+            <span className="text-xs text-slate-500">
+              Optional. Upload a JPG, PNG, WebP, or GIF up to 5MB.
+            </span>
+          </label>
+          {form.profileImagePreviewUrl ? (
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={form.profileImagePreviewUrl}
+                alt=""
+                className="h-14 w-14 rounded-xl object-cover ring-1 ring-slate-200"
+              />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-slate-900">
+                  {form.profileImageName}
+                </div>
+                <div className="text-xs text-slate-500">This image will appear on webinar landing pages.</div>
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
       {step === 1 ? (
         <div className="space-y-4">
@@ -307,11 +347,11 @@ function ReviewStep({
         required
       />
       <Input
-        label="Reviewer context"
+        label="Borrower type / reviewer context (optional)"
         value={review.reviewerContext}
         onChange={(event) => onChange({ reviewerContext: event.target.value })}
         placeholder="First-time buyer"
-        hint="Examples: First-time buyer, Investor, Self-employed borrower, Realtor partner"
+        hint="Optional. Examples: First-time buyer, Investor, Self-employed borrower, Realtor partner."
       />
       <Textarea
         label="Review text"
@@ -342,7 +382,8 @@ function HiddenSignupFields({
     email: string;
     password: string;
     shortBio: string;
-    profileImageUrl: string;
+    profileImagePreviewUrl: string;
+    profileImageName: string;
     yearsExperience: string;
     familiesHelped: string;
     totalLoanVolume: string;
@@ -358,7 +399,6 @@ function HiddenSignupFields({
       <input type="hidden" name="email" value={form.email} />
       <input type="hidden" name="password" value={form.password} />
       <input type="hidden" name="short_bio" value={form.shortBio} />
-      <input type="hidden" name="profile_image_url" value={form.profileImageUrl} />
       <input type="hidden" name="years_experience" value={form.yearsExperience} />
       <input type="hidden" name="families_helped" value={form.familiesHelped} />
       <input type="hidden" name="total_loan_volume" value={form.totalLoanVolume} />
