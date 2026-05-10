@@ -39,7 +39,7 @@ export async function createWebinar(formData: FormData) {
     hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? "").trim(),
-    hero_image_url: String(formData.get("hero_image_url") ?? "").trim(),
+    hero_image_url: "",
     slug: rawSlug || undefined,
   });
 

@@ -5,6 +5,7 @@ import {
   type PublicTestimonial,
 } from "@/server/public-webinar";
 import { RegisterForm } from "@/components/public/register-form";
+import { WebinarViewTracker } from "@/components/analytics/webinar-view-tracker";
 import { CountdownTimer } from "@/components/public/countdown-timer";
 import { WebinarTime } from "@/components/public/webinar-time";
 import { formatInTimeZone } from "@/lib/timezone-utils";
@@ -25,6 +26,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      <WebinarViewTracker webinarId={w.id} slug={data.slug} />
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50 via-white to-slate-50" />
@@ -58,28 +60,19 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 {w.cta_text || template.defaultCTA}
               </div>
 
-              {data.hero_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={data.hero_image_url}
-                  alt=""
-                  className="mt-8 w-full rounded-3xl border border-slate-200 bg-white object-cover shadow-sm"
-                />
-              ) : (
-                <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="text-sm font-semibold text-slate-900">
-                    What we’ll cover (in plain English)
-                  </div>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                    {heroBullets.map((item) => (
-                      <li key={item} className="flex gap-2">
-                        <span className="mt-0.5 text-emerald-600">✓</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+              <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="text-sm font-semibold text-slate-900">
+                  What we’ll cover (in plain English)
                 </div>
-              )}
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  {heroBullets.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-0.5 text-emerald-600">✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             {/* Registration card */}

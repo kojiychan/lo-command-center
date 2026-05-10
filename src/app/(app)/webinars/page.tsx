@@ -52,6 +52,8 @@ export default async function WebinarsPage() {
                   <th className="pb-2 pr-4 font-medium">Webinar</th>
                   <th className="pb-2 pr-4 font-medium">Schedule</th>
                   <th className="pb-2 pr-4 font-medium">Landing page</th>
+                  <th className="pb-2 pr-4 font-medium">Views</th>
+                  <th className="pb-2 pr-4 font-medium">Sign ups</th>
                   <th className="pb-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -85,6 +87,12 @@ export default async function WebinarsPage() {
                         ) : (
                           <span className="text-slate-500">—</span>
                         )}
+                      </td>
+                      <td className="py-3 pr-4 font-semibold text-slate-900">
+                        {w.view_count.toLocaleString()}
+                      </td>
+                      <td className="py-3 pr-4 font-semibold text-slate-900">
+                        {w.signup_count.toLocaleString()}
                       </td>
                       <td className="py-3">
                         <Badge tone={upcoming ? "success" : "neutral"}>

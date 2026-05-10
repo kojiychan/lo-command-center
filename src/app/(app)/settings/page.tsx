@@ -2,8 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { REMINDER_LABELS } from "@/lib/constants";
-import { WEBINAR_BASE_DOMAIN, formatWebinarDomain } from "@/domain/profiles";
-import { updateDomainPrefix } from "@/app/actions/auth";
+import {
+  DomainSettingsForm,
+  ProfileSettingsForm,
+} from "@/components/settings/settings-forms";
 import { updateUserReminderTemplate } from "@/app/actions/templates";
 import type { ReminderTemplate } from "@/types/database";
 
@@ -19,9 +21,13 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, company_name, domain_prefix")
+    .select("full_name, company_name, domain_prefix, profile_image_url")
     .eq("id", user.id)
     .maybeSingle();
+
+  const nameParts = (profile?.full_name ?? "").trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ");
 
   const { data: templates } = await supabase
     .from("reminder_templates")
@@ -40,21 +46,13 @@ export default async function SettingsPage() {
       </div>
 
       <Card>
-        <CardHeader title="Account" subtitle="Profile basics pulled from Supabase Auth + your profile row." />
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
-            <dd className="text-slate-900">{user.email}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt>
-            <dd className="text-slate-900">{profile?.full_name ?? "—"}</dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Company</dt>
-            <dd className="text-slate-900">{profile?.company_name ?? "—"}</dd>
-          </div>
-        </dl>
+        <CardHeader title="Profile" subtitle="Update the presenter details reused across webinar pages." />
+        <ProfileSettingsForm
+          firstName={firstName}
+          lastName={lastName}
+          companyName={profile?.company_name ?? ""}
+          profileImageUrl={profile?.profile_image_url ?? null}
+        />
       </Card>
 
       <Card>
@@ -62,36 +60,7 @@ export default async function SettingsPage() {
           title="Webinar domain"
           subtitle="Choose the text that appears before your shared webinar domain."
         />
-        <form action={updateDomainPrefix} className="space-y-4">
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Domain prefix
-            </span>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                name="domain_prefix"
-                defaultValue={profile?.domain_prefix ?? ""}
-                required
-                maxLength={63}
-                pattern="[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
-                placeholder="arcmortgage"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4 sm:max-w-xs"
-              />
-              <span className="text-sm text-slate-600">.{WEBINAR_BASE_DOMAIN}</span>
-            </div>
-          </label>
-          <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Current domain:{" "}
-            <span className="font-semibold text-slate-900">
-              {formatWebinarDomain(profile?.domain_prefix)}
-            </span>
-          </div>
-          <div className="flex justify-end">
-            <Button size="sm" type="submit">
-              Save domain
-            </Button>
-          </div>
-        </form>
+        <DomainSettingsForm domainPrefix={profile?.domain_prefix ?? ""} />
       </Card>
 
       <Card>

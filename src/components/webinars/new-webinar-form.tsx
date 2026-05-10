@@ -42,7 +42,7 @@ function templateFields(template: WebinarTemplateConfig): EditableTemplateFields
   };
 }
 
-export function NewWebinarForm() {
+export function NewWebinarForm({ hostName }: { hostName: string }) {
   const [startsLocal, setStartsLocal] = useState("");
   const userTz = useUserTimezone();
   const [timezone, setTimezone] = useState("America/Los_Angeles");
@@ -121,6 +121,7 @@ export function NewWebinarForm() {
         }
       }}
     >
+      <input type="hidden" name="host_name" value={hostName} />
       <section className="space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Choose a Webinar Template</h2>
@@ -243,7 +244,15 @@ export function NewWebinarForm() {
               </div>
             </div>
           </div>
-          <Input label="Host name" name="host_name" required placeholder="Jordan Lee, Loan Officer" />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Host name
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-900">{hostName}</div>
+            <p className="mt-1 text-xs text-slate-500">
+              Pulled from onboarding. Update your name in Settings if this needs to change.
+            </p>
+          </div>
           <Input
             label="Join link"
             name="join_url"
@@ -309,13 +318,6 @@ export function NewWebinarForm() {
             value={fields.buttonText}
             onChange={(event) => markCustomized({ buttonText: event.target.value })}
             required
-          />
-          <Input
-            label="Hero image URL (optional)"
-            name="hero_image_url"
-            type="url"
-            placeholder="https://…"
-            hint="Paste an image URL for now. Later: wire Supabase Storage uploads here."
           />
         </div>
       </div>

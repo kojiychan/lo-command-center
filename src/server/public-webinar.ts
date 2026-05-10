@@ -32,6 +32,7 @@ export type PublicWebinarLanding = {
   presenter: PublicPresenter | null;
   testimonials: PublicTestimonial[];
   webinar: {
+    id: string;
     user_id: string;
     template_type: WebinarTemplateId;
     title: string;
@@ -70,6 +71,7 @@ export async function getPublicWebinarLanding(
       agenda_items,
       webinars (
         user_id,
+        id,
         template_type,
         title,
         description,
@@ -95,6 +97,7 @@ export async function getPublicWebinarLanding(
   const w = (Array.isArray(rawWebinar) ? rawWebinar[0] : rawWebinar) as
     | {
         title: string;
+        id: string;
         user_id: string;
         template_type: WebinarTemplateId;
         description: string | null;
@@ -138,6 +141,7 @@ export async function getPublicWebinarLanding(
       presenter: profile ?? null,
       testimonials: testimonials ?? [],
       webinar: {
+        id: w.id,
         user_id: w.user_id,
         template_type: w.template_type,
         title: w.title,

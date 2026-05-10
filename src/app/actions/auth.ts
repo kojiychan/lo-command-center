@@ -14,6 +14,24 @@ type AuthFormState = {
   message: string | null;
 };
 
+export type SettingsFormState = {
+  error: string | null;
+  message: string | null;
+  profile?: {
+    firstName: string;
+    lastName: string;
+    companyName: string;
+    profileImageUrl?: string | null;
+  };
+  domainPrefix?: string | null;
+};
+
+const profileSettingsSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required."),
+  lastName: z.string().trim().min(1, "Last name is required."),
+  companyName: z.string().trim().optional(),
+});
+
 const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   password: z.string().min(8, "Use at least 8 characters."),
@@ -53,6 +71,14 @@ function optionalNumber(value: number | "") {
 function optionalText(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text.length > 0 ? text : null;
+}
+
+function splitFullName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/);
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+  };
 }
 
 function imageExtension(contentType: string) {
@@ -205,6 +231,8 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
 
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
+    first_name: splitFullName(parsed.data.fullName).firstName,
+    last_name: splitFullName(parsed.data.fullName).lastName,
     full_name: parsed.data.fullName,
     domain_prefix: parsed.data.domainPrefix,
     short_bio: parsed.data.shortBio,
@@ -246,26 +274,108 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
   };
 }
 
-export async function updateDomainPrefix(formData: FormData): Promise<void> {
+export async function updateDomainPrefix(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
   const user = await getCurrentUser();
   if (!user) {
-    return;
+    return { error: "You must be signed in.", message: null };
   }
 
   const parsed = optionalDomainPrefixSchema.safeParse(String(formData.get("domain_prefix") ?? ""));
   if (!parsed.success) {
-    return;
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid domain prefix.", message: null };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ domain_prefix: parsed.data })
-    .eq("id", user.id);
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Server is missing the Supabase service role key.", message: null };
+  }
+
+  const { error } = await admin.from("profiles").upsert(
+    {
+      id: user.id,
+      domain_prefix: parsed.data,
+    },
+    { onConflict: "id" },
+  );
 
   if (error) {
-    return;
+    return { error: error.message, message: null };
   }
 
   revalidatePath("/settings");
+  return { error: null, message: "Domain saved.", domainPrefix: parsed.data };
+}
+
+export async function updateProfileSettings(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in.", message: null };
+  }
+
+  const parsed = profileSettingsSchema.safeParse({
+    firstName: String(formData.get("first_name") ?? ""),
+    lastName: String(formData.get("last_name") ?? ""),
+    companyName: String(formData.get("company_name") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Please complete your profile.", message: null };
+  }
+
+  const imageFile = getProfileImageFile(formData);
+  const imageResult = imageFile ? await uploadProfileImage(user.id, imageFile) : null;
+  if (imageResult && "error" in imageResult) {
+    return { error: imageResult.error, message: null };
+  }
+
+  const fullName = `${parsed.data.firstName} ${parsed.data.lastName}`.trim();
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Server is missing the Supabase service role key.", message: null };
+  }
+
+  const update: {
+    full_name: string;
+    company_name: string | null;
+    profile_image_url?: string;
+  } = {
+    full_name: fullName,
+    company_name: optionalText(parsed.data.companyName),
+  };
+
+  if (imageResult && "publicUrl" in imageResult) {
+    update.profile_image_url = imageResult.publicUrl;
+  }
+
+  const { error } = await admin.from("profiles").upsert(
+    {
+      id: user.id,
+      ...update,
+    },
+    { onConflict: "id" },
+  );
+  if (error) {
+    return { error: error.message, message: null };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/webinars/new");
+  return {
+    error: null,
+    message: "Profile saved.",
+    profile: {
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      companyName: parsed.data.companyName ?? "",
+      ...(imageResult && "publicUrl" in imageResult
+        ? { profileImageUrl: imageResult.publicUrl }
+        : {}),
+    },
+  };
 }

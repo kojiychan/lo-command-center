@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildDefaultReminderSchedule } from "@/lib/reminder-schedule";
+import { sendTemplateSms } from "@/server/services/sms";
 
 const registrationSchema = z.object({
   slug: z.string().min(1),
@@ -147,6 +148,28 @@ export async function registerForWebinar(
     const { error: eventsError } = await admin.from("reminder_events").insert(events);
     if (eventsError) {
       return { status: "error", message: eventsError.message };
+    }
+  }
+
+  const confirmationTemplate = templates?.find((t) => t.template_key === "confirmation");
+  if (confirmationTemplate?.sms_enabled) {
+    const { data: owner } = await admin
+      .from("webinars")
+      .select("user_id")
+      .eq("id", page.webinar_id)
+      .maybeSingle();
+
+    if (owner?.user_id) {
+      const smsResult = await sendTemplateSms({
+        userId: owner.user_id,
+        webinarId: page.webinar_id,
+        leadId: inserted.id,
+        templateKey: "confirmation",
+      });
+
+      if ("error" in smsResult) {
+        console.error("Confirmation SMS failed:", smsResult.error);
+      }
     }
   }
 

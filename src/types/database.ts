@@ -89,6 +89,25 @@ export type Lead = {
   follow_up_status: FollowUpStatus;
   registered_at: string;
   updated_at: string;
+  sms_messages?: SmsMessage[];
+};
+
+export type SmsMessage = {
+  id: string;
+  user_id: string;
+  webinar_id: string | null;
+  lead_id: string | null;
+  direction: "outbound" | "inbound";
+  to_number: string | null;
+  from_number: string | null;
+  body: string;
+  twilio_message_sid: string | null;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  provider: "twilio";
+  created_at: string;
+  sent_at: string | null;
 };
 
 export type LeadNote = {

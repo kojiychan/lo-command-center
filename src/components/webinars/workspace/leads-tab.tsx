@@ -203,6 +203,8 @@ function LeadCard({
   onMove: (status: LeadStatus) => void;
 }) {
   const color = webinarColor(webinar.id);
+  const smsMessages = lead.sms_messages ?? [];
+  const [showSms, setShowSms] = useState(false);
 
   return (
     <article
@@ -247,6 +249,43 @@ function LeadCard({
       <div className="mt-3 space-y-1 text-xs text-slate-600">
         <div>{lead.phone}</div>
         <div>Registered {new Date(lead.registered_at).toLocaleDateString()}</div>
+      </div>
+
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setShowSms((current) => !current)}
+          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+        >
+          {showSms ? "Hide" : "Show"} SMS history ({smsMessages.length})
+        </button>
+        {showSms ? (
+          <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-md border border-slate-100 bg-slate-50 p-2">
+            {smsMessages.length === 0 ? (
+              <div className="text-xs text-slate-500">No SMS messages yet.</div>
+            ) : (
+              smsMessages.map((message) => (
+                <div key={message.id} className="rounded-md bg-white p-2 text-xs text-slate-700 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold capitalize text-slate-900">
+                      {message.direction}
+                    </span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
+                      {message.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap leading-relaxed">{message.body}</p>
+                  <div className="mt-1 text-[11px] text-slate-400">
+                    {new Date(message.created_at).toLocaleString()}
+                  </div>
+                  {message.error_message ? (
+                    <div className="mt-1 text-[11px] text-red-600">{message.error_message}</div>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-3">

@@ -8,6 +8,8 @@ export type WebinarLibraryRow = {
   starts_at: string;
   timezone: string;
   webinar_pages: { slug: string } | { slug: string }[] | null;
+  view_count: number;
+  signup_count: number;
 };
 
 export async function getWebinarLibrary(userId: string): Promise<WebinarLibraryRow[]> {
@@ -22,13 +24,30 @@ export async function getWebinarLibrary(userId: string): Promise<WebinarLibraryR
       timezone,
       webinar_pages (
         slug
-      )
+      ),
+      leads (count),
+      webinar_page_views (count)
     `,
     )
     .eq("user_id", userId)
     .order("starts_at", { ascending: true });
 
-  return (data ?? []) as WebinarLibraryRow[];
+  return (data ?? []).map((row) => {
+    const raw = row as typeof row & {
+      leads?: Array<{ count: number }> | null;
+      webinar_page_views?: Array<{ count: number }> | null;
+    };
+
+    return {
+      id: raw.id,
+      title: raw.title,
+      starts_at: raw.starts_at,
+      timezone: raw.timezone,
+      webinar_pages: raw.webinar_pages,
+      signup_count: raw.leads?.[0]?.count ?? 0,
+      view_count: raw.webinar_page_views?.[0]?.count ?? 0,
+    };
+  }) as WebinarLibraryRow[];
 }
 
 export async function getWebinarWorkspaceData(userId: string, webinarId: string) {
@@ -39,7 +58,10 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
       `
       *,
       webinar_pages (*),
-      leads (*)
+      leads (
+        *,
+        sms_messages (*)
+      )
     `,
     )
     .eq("id", webinarId)
@@ -58,9 +80,14 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
   }
 
   const leadsRaw = webinar.leads as Lead[] | null | undefined;
-  const leads = (Array.isArray(leadsRaw) ? leadsRaw : []).sort(
-    (a, b) => new Date(b.registered_at).getTime() - new Date(a.registered_at).getTime(),
-  );
+  const leads = (Array.isArray(leadsRaw) ? leadsRaw : [])
+    .map((lead) => ({
+      ...lead,
+      sms_messages: (lead.sms_messages ?? []).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    }))
+    .sort((a, b) => new Date(b.registered_at).getTime() - new Date(a.registered_at).getTime());
 
   const { data: templates } = await supabase
     .from("reminder_templates")

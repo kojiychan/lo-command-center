@@ -1,8 +1,24 @@
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/card";
 import { NewWebinarForm } from "@/components/webinars/new-webinar-form";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/server/auth/current-user";
 
-export default function NewWebinarPage() {
+export default async function NewWebinarPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const hostName = profile?.full_name ?? user.email?.split("@")[0] ?? "Your presenter";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -25,7 +41,7 @@ export default function NewWebinarPage() {
           title="Webinar + landing page"
           subtitle="You can iterate copy later — launch beats perfect."
         />
-        <NewWebinarForm />
+        <NewWebinarForm hostName={hostName} />
       </Card>
     </div>
   );
