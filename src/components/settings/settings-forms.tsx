@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useFormState } from "react-dom";
 import {
   updateDomainPrefix,
+  updateEmailSettings,
   updateProfileSettings,
+  updateTestimonialsSettings,
   type SettingsFormState,
 } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -14,12 +16,40 @@ type ProfileSettingsFormProps = {
   firstName: string;
   lastName: string;
   companyName: string;
+  shortBio: string;
   profileImageUrl: string | null;
 };
 
 type DomainSettingsFormProps = {
   domainPrefix: string;
 };
+
+type EmailSettingsFormProps = {
+  fromName: string;
+  fromEmail: string;
+  replyToEmail: string;
+};
+
+type TestimonialDraft = {
+  reviewerName: string;
+  reviewerContext: string;
+  reviewText: string;
+  rating: string;
+};
+
+type TestimonialsSettingsFormProps = {
+  testimonials: TestimonialDraft[];
+};
+
+const blankTestimonial = (): TestimonialDraft => ({
+  reviewerName: "",
+  reviewerContext: "",
+  reviewText: "",
+  rating: "5",
+});
+
+const samplePresenterBio =
+  "I’m a mortgage advisor who helps buyers understand their options before they start shopping. I specialize in making the loan process feel clear, practical, and less overwhelming, especially for buyers who want a real plan before they make an offer.";
 
 const initialState: SettingsFormState = {
   error: null,
@@ -30,6 +60,7 @@ export function ProfileSettingsForm({
   firstName,
   lastName,
   companyName,
+  shortBio,
   profileImageUrl,
 }: ProfileSettingsFormProps) {
   const [profileState, profileAction] = useFormState(updateProfileSettings, initialState);
@@ -38,6 +69,7 @@ export function ProfileSettingsForm({
     firstName,
     lastName,
     companyName,
+    shortBio,
     profileImageUrl,
   });
 
@@ -47,6 +79,7 @@ export function ProfileSettingsForm({
         firstName: profileState.profile?.firstName ?? current.firstName,
         lastName: profileState.profile?.lastName ?? current.lastName,
         companyName: profileState.profile?.companyName ?? current.companyName,
+        shortBio: profileState.profile?.shortBio ?? current.shortBio,
         profileImageUrl:
           profileState.profile && "profileImageUrl" in profileState.profile
             ? profileState.profile.profileImageUrl ?? null
@@ -91,6 +124,23 @@ export function ProfileSettingsForm({
               placeholder="ARC Mortgage"
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 read-only:bg-slate-50 focus:border-emerald-500 focus:ring-4"
             />
+          </label>
+          <label className="block space-y-1.5 sm:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Presenter bio
+            </span>
+            <textarea
+              name="short_bio"
+              value={values.shortBio}
+              onChange={(event) => setValues({ ...values, shortBio: event.target.value })}
+              readOnly={!editing}
+              placeholder={samplePresenterBio}
+              rows={5}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 read-only:bg-slate-50 focus:border-emerald-500 focus:ring-4"
+            />
+            <span className="text-xs text-slate-500">
+              Optional. This appears in the Meet Your Presenter section on webinar pages.
+            </span>
           </label>
         </div>
 
@@ -183,6 +233,202 @@ export function DomainSettingsForm({ domainPrefix }: DomainSettingsFormProps) {
             Save domain
           </Button>
         </div>
+    </form>
+  );
+}
+
+export function EmailSettingsForm({
+  fromName,
+  fromEmail,
+  replyToEmail,
+}: EmailSettingsFormProps) {
+  const [emailState, emailAction] = useFormState(updateEmailSettings, initialState);
+  const [values, setValues] = useState({
+    fromName,
+    replyToEmail,
+  });
+
+  useEffect(() => {
+    if (emailState.emailSettings) {
+      setValues({
+        fromName: emailState.emailSettings.fromName,
+        replyToEmail: emailState.emailSettings.replyToEmail,
+      });
+    }
+  }, [emailState.emailSettings]);
+
+  return (
+    <form action={emailAction} className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            From name
+          </span>
+          <input
+            name="from_name"
+            value={values.fromName}
+            onChange={(event) => setValues({ ...values, fromName: event.target.value })}
+            required
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Reply-to email
+          </span>
+          <input
+            name="reply_to_email"
+            type="email"
+            value={values.replyToEmail}
+            onChange={(event) => setValues({ ...values, replyToEmail: event.target.value })}
+            required
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+          />
+        </label>
+      </div>
+
+      <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+        <div>
+          Current provider: <span className="font-semibold text-slate-900">Platform Email</span>
+        </div>
+        <div className="mt-1 text-xs text-slate-500">
+          Emails send from {fromEmail}; replies go to your reply-to address.
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" type="button" variant="secondary" disabled>
+          Connect Gmail · Coming soon
+        </Button>
+        <Button size="sm" type="button" variant="secondary" disabled>
+          Connect Outlook · Coming soon
+        </Button>
+      </div>
+
+      <SettingsNotice state={emailState} />
+
+      <div className="flex justify-end">
+        <Button size="sm" type="submit">
+          Save email settings
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function TestimonialsSettingsForm({ testimonials }: TestimonialsSettingsFormProps) {
+  const [testimonialsState, testimonialsAction] = useFormState(
+    updateTestimonialsSettings,
+    initialState,
+  );
+  const [values, setValues] = useState<TestimonialDraft[]>(
+    [0, 1, 2].map((index) => testimonials[index] ?? blankTestimonial()),
+  );
+
+  useEffect(() => {
+    if (testimonialsState.testimonials) {
+      setValues([0, 1, 2].map((index) => testimonialsState.testimonials?.[index] ?? blankTestimonial()));
+    }
+  }, [testimonialsState.testimonials]);
+
+  function updateReview(index: number, patch: Partial<TestimonialDraft>) {
+    setValues((current) =>
+      current.map((review, reviewIndex) =>
+        reviewIndex === index ? { ...review, ...patch } : review,
+      ),
+    );
+  }
+
+  function clearReview(index: number) {
+    setValues((current) =>
+      current.map((review, reviewIndex) => (reviewIndex === index ? blankTestimonial() : review)),
+    );
+  }
+
+  return (
+    <form action={testimonialsAction} className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {values.map((review, index) => {
+          const number = index + 1;
+          return (
+            <div key={number} className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-900">Review {number}</div>
+                <button
+                  type="button"
+                  onClick={() => clearReview(index)}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="mt-4 space-y-3">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Reviewer name
+                  </span>
+                  <input
+                    name={`reviewer_name_${number}`}
+                    value={review.reviewerName}
+                    onChange={(event) => updateReview(index, { reviewerName: event.target.value })}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Context
+                  </span>
+                  <input
+                    name={`reviewer_context_${number}`}
+                    value={review.reviewerContext}
+                    onChange={(event) => updateReview(index, { reviewerContext: event.target.value })}
+                    placeholder="First-time buyer"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Review text
+                  </span>
+                  <textarea
+                    name={`review_text_${number}`}
+                    value={review.reviewText}
+                    onChange={(event) => updateReview(index, { reviewText: event.target.value })}
+                    rows={5}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Rating
+                  </span>
+                  <input
+                    name={`rating_${number}`}
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={review.rating}
+                    onChange={(event) => updateReview(index, { rating: event.target.value })}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  />
+                </label>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-xs text-slate-500">
+        Reviews are optional. Filled reviews need a reviewer name and at least 20 characters of review text.
+      </p>
+
+      <SettingsNotice state={testimonialsState} />
+
+      <div className="flex justify-end">
+        <Button size="sm" type="submit">
+          Save reviews
+        </Button>
+      </div>
     </form>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendTemplateEmail } from "@/server/services/email";
 import { sendTemplateSms } from "@/server/services/sms";
 import type { ReminderTemplateKey } from "@/domain/reminders";
 
@@ -19,9 +20,9 @@ export async function POST(request: Request) {
     .from("reminder_events")
     .select("id, lead_id, webinar_id, template_key, channel, webinars ( user_id )")
     .eq("status", "pending")
-    .eq("channel", "sms")
+    .in("channel", ["email", "sms"])
     .lte("scheduled_for", new Date().toISOString())
-    .in("template_key", ["day_before", "morning_of", "ten_min", "started"])
+    .in("template_key", ["day_before", "morning_of", "one_hour", "ten_min", "started", "post_followup"])
     .limit(50);
 
   if (error) {
@@ -47,12 +48,14 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const result = await sendTemplateSms({
+    const payload = {
       userId: webinar.user_id,
       webinarId: event.webinar_id,
       leadId: event.lead_id,
       templateKey: event.template_key as ReminderTemplateKey,
-    });
+    };
+    const result =
+      event.channel === "email" ? await sendTemplateEmail(payload) : await sendTemplateSms(payload);
 
     if ("error" in result) {
       failed += 1;
@@ -64,7 +67,10 @@ export async function POST(request: Request) {
       sent += 1;
       await admin
         .from("reminder_events")
-        .update({ status: "sent", provider_message: "Twilio SMS queued." })
+        .update({
+          status: "sent",
+          provider_message: event.channel === "email" ? "Resend email queued." : "Twilio SMS queued.",
+        })
         .eq("id", event.id);
     }
   }

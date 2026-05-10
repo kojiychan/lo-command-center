@@ -60,6 +60,7 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
       webinar_pages (*),
       leads (
         *,
+        email_messages (*),
         sms_messages (*)
       )
     `,
@@ -83,6 +84,9 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
   const leads = (Array.isArray(leadsRaw) ? leadsRaw : [])
     .map((lead) => ({
       ...lead,
+      email_messages: (lead.email_messages ?? []).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
       sms_messages: (lead.sms_messages ?? []).sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       ),

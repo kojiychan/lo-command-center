@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildDefaultReminderSchedule } from "@/lib/reminder-schedule";
+import { sendTemplateEmail } from "@/server/services/email";
 import { sendTemplateSms } from "@/server/services/sms";
 
 const registrationSchema = z.object({
@@ -125,8 +126,7 @@ export async function registerForWebinar(
         channel: "email",
         scheduled_for: item.scheduled_for.toISOString(),
         status: "pending",
-        provider_message:
-          "MOCK: scheduled (connect SendGrid here; render `email_subject` + `email_body`).",
+        provider_message: "Scheduled for Resend email delivery.",
       });
     }
 
@@ -138,8 +138,7 @@ export async function registerForWebinar(
         channel: "sms",
         scheduled_for: item.scheduled_for.toISOString(),
         status: "pending",
-        provider_message:
-          "MOCK: scheduled (connect Twilio here; render `sms_body` with TCPA-compliant sending windows).",
+        provider_message: "Scheduled for Twilio SMS delivery.",
       });
     }
   }
@@ -152,7 +151,7 @@ export async function registerForWebinar(
   }
 
   const confirmationTemplate = templates?.find((t) => t.template_key === "confirmation");
-  if (confirmationTemplate?.sms_enabled) {
+  if (confirmationTemplate?.email_enabled || confirmationTemplate?.sms_enabled) {
     const { data: owner } = await admin
       .from("webinars")
       .select("user_id")
@@ -160,15 +159,30 @@ export async function registerForWebinar(
       .maybeSingle();
 
     if (owner?.user_id) {
-      const smsResult = await sendTemplateSms({
-        userId: owner.user_id,
-        webinarId: page.webinar_id,
-        leadId: inserted.id,
-        templateKey: "confirmation",
-      });
+      if (confirmationTemplate.email_enabled) {
+        const emailResult = await sendTemplateEmail({
+          userId: owner.user_id,
+          webinarId: page.webinar_id,
+          leadId: inserted.id,
+          templateKey: "confirmation",
+        });
 
-      if ("error" in smsResult) {
-        console.error("Confirmation SMS failed:", smsResult.error);
+        if ("error" in emailResult) {
+          console.error("Confirmation email failed:", emailResult.error);
+        }
+      }
+
+      if (confirmationTemplate.sms_enabled) {
+        const smsResult = await sendTemplateSms({
+          userId: owner.user_id,
+          webinarId: page.webinar_id,
+          leadId: inserted.id,
+          templateKey: "confirmation",
+        });
+
+        if ("error" in smsResult) {
+          console.error("Confirmation SMS failed:", smsResult.error);
+        }
       }
     }
   }

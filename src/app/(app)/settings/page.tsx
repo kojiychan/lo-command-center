@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { REMINDER_LABELS } from "@/lib/constants";
 import {
   DomainSettingsForm,
+  EmailSettingsForm,
   ProfileSettingsForm,
+  TestimonialsSettingsForm,
 } from "@/components/settings/settings-forms";
 import { updateUserReminderTemplate } from "@/app/actions/templates";
 import type { ReminderTemplate } from "@/types/database";
@@ -21,7 +23,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, company_name, domain_prefix, profile_image_url")
+    .select("full_name, company_name, domain_prefix, short_bio, profile_image_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -35,6 +37,19 @@ export default async function SettingsPage() {
     .eq("user_id", user.id)
     .is("webinar_id", null)
     .order("template_key", { ascending: true });
+
+  const { data: emailSettings } = await supabase
+    .from("user_email_settings")
+    .select("from_name, from_email, reply_to_email")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const { data: testimonials } = await supabase
+    .from("testimonials")
+    .select("reviewer_name, reviewer_context, review_text, rating, display_order")
+    .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
+    .limit(3);
 
   return (
     <div className="space-y-8">
@@ -51,6 +66,7 @@ export default async function SettingsPage() {
           firstName={firstName}
           lastName={lastName}
           companyName={profile?.company_name ?? ""}
+          shortBio={profile?.short_bio ?? ""}
           profileImageUrl={profile?.profile_image_url ?? null}
         />
       </Card>
@@ -61,6 +77,40 @@ export default async function SettingsPage() {
           subtitle="Choose the text that appears before your shared webinar domain."
         />
         <DomainSettingsForm domainPrefix={profile?.domain_prefix ?? ""} />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Email sending"
+          subtitle="Set the sender name and reply-to address used for webinar emails."
+        />
+        <EmailSettingsForm
+          fromName={emailSettings?.from_name ?? "RealEstateWebinar"}
+          fromEmail={
+            emailSettings?.from_email ??
+            process.env.FALLBACK_FROM_EMAIL ??
+            `team@${process.env.EMAIL_FROM_DOMAIN || "arc-mortgage.com"}`
+          }
+          replyToEmail={emailSettings?.reply_to_email ?? user.email ?? ""}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Client reviews"
+          subtitle="Edit the testimonials reused across your webinar landing pages."
+        />
+        <TestimonialsSettingsForm
+          testimonials={[0, 1, 2].map((index) => {
+            const review = testimonials?.find((item) => item.display_order === index + 1);
+            return {
+              reviewerName: review?.reviewer_name ?? "",
+              reviewerContext: review?.reviewer_context ?? "",
+              reviewText: review?.review_text ?? "",
+              rating: review?.rating == null ? "5" : String(review.rating),
+            };
+          })}
+        />
       </Card>
 
       <Card>

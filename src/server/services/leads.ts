@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { assertLeadOwner } from "@/server/auth/ownership";
+import { sendTemplateEmail } from "@/server/services/email";
+import { sendTemplateSms } from "@/server/services/sms";
 import type {
   FollowUpStatus,
   LeadStatus,
@@ -22,28 +25,28 @@ const sequenceConfig: Record<
     templateKey: "attended_cta",
     status: "attended",
     followUpStatus: "sent",
-    providerMessage: "MOCK: attended-but-did-not-book CTA reminder sequence sent.",
+    providerMessage: "Attended-but-did-not-book CTA reminder sequence sent.",
   },
   no_show_one_on_one: {
     label: "1:1 invite",
     templateKey: "no_show_one_on_one",
     status: "no_show",
     followUpStatus: "sent",
-    providerMessage: "MOCK: no-show one-on-one invite campaign sent.",
+    providerMessage: "No-show one-on-one invite campaign sent.",
   },
   booked_call_prep: {
     label: "booked call prep",
     templateKey: "booked_call_prep",
     status: "booked_call",
     followUpStatus: "sent",
-    providerMessage: "MOCK: booked-call prep email/SMS sent.",
+    providerMessage: "Booked-call prep email/SMS sent.",
   },
   closed_client_onboarding: {
     label: "client onboarding",
     templateKey: "closed_client_onboarding",
     status: "closed",
     followUpStatus: "converted",
-    providerMessage: "MOCK: closed lead moved into client onboarding sequence.",
+    providerMessage: "Closed lead moved into client onboarding sequence.",
   },
 };
 
@@ -215,20 +218,45 @@ export async function runPostWebinarSequenceForUser(
 
   const channels = await getEnabledChannels(gate.webinarId, userId, config.templateKey);
   if (channels.length > 0) {
+    const admin = createAdminClient();
+    if (!admin) {
+      return { error: "Supabase service role key is missing." };
+    }
+
     const now = new Date().toISOString();
-    const { error: eventError } = await supabase.from("reminder_events").insert(
-      channels.map((channel) => ({
+    const events = [];
+
+    for (const channel of channels) {
+      const sendResult =
+        channel === "email"
+          ? await sendTemplateEmail({
+              userId,
+              webinarId: gate.webinarId,
+              leadId,
+              templateKey: config.templateKey,
+            })
+          : await sendTemplateSms({
+              userId,
+              webinarId: gate.webinarId,
+              leadId,
+              templateKey: config.templateKey,
+            });
+
+      events.push({
         lead_id: leadId,
         webinar_id: gate.webinarId,
         template_key: config.templateKey,
         channel,
         scheduled_for: now,
-        status: "sent",
-        provider_message: `${config.providerMessage} Wire ${
-          channel === "email" ? "SendGrid" : "Twilio"
-        } here.`,
-      })),
-    );
+        status: "error" in sendResult ? "failed" : "sent",
+        provider_message:
+          "error" in sendResult
+            ? sendResult.error
+            : `${config.providerMessage} ${channel === "email" ? "Resend email" : "Twilio SMS"} queued.`,
+      });
+    }
+
+    const { error: eventError } = await admin.from("reminder_events").insert(events);
 
     if (eventError) {
       return { error: eventError.message };

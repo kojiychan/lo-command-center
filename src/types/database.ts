@@ -90,6 +90,7 @@ export type Lead = {
   registered_at: string;
   updated_at: string;
   sms_messages?: SmsMessage[];
+  email_messages?: EmailMessage[];
 };
 
 export type SmsMessage = {
@@ -106,6 +107,27 @@ export type SmsMessage = {
   error_code: string | null;
   error_message: string | null;
   provider: "twilio";
+  created_at: string;
+  sent_at: string | null;
+};
+
+export type EmailMessage = {
+  id: string;
+  user_id: string;
+  webinar_id: string | null;
+  lead_id: string | null;
+  direction: "outbound";
+  provider: "resend" | "gmail" | "outlook";
+  from_email: string;
+  from_name: string | null;
+  reply_to_email: string | null;
+  to_email: string;
+  subject: string;
+  html_body: string;
+  text_body: string;
+  provider_message_id: string | null;
+  status: string;
+  error_message: string | null;
   created_at: string;
   sent_at: string | null;
 };

@@ -365,7 +365,16 @@ function TestimonialsSection({
           </p>
         </div>
 
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div
+          className={[
+            "mt-8 grid gap-4",
+            testimonials.length === 1
+              ? "max-w-xl"
+              : testimonials.length === 2
+                ? "lg:grid-cols-2"
+                : "lg:grid-cols-3",
+          ].join(" ")}
+        >
           {testimonials.map((testimonial) => (
             <div
               key={testimonial.id}

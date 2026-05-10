@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
 import { useFormState } from "react-dom";
-import { signUp } from "@/app/actions/auth";
+import { checkSignupEmail, signUp } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,10 +27,14 @@ const blankReview = (): ReviewDraft => ({
   rating: "5",
 });
 
+const samplePresenterBio =
+  "I’m a mortgage advisor who helps buyers understand their options before they start shopping. I specialize in making the loan process feel clear, practical, and less overwhelming, especially for buyers who want a real plan before they make an offer.";
+
 export function SignupForm() {
   const [state, formAction] = useFormState(signUp, initialState);
   const [step, setStep] = useState(0);
   const [clientError, setClientError] = useState<string | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     domainPrefix: "",
@@ -66,6 +71,7 @@ export function SignupForm() {
   }, [form.profileImagePreviewUrl]);
 
   function updateReview(index: number, patch: Partial<ReviewDraft>) {
+    setClientError(null);
     setForm((current) => ({
       ...current,
       reviews: current.reviews.map((review, idx) =>
@@ -82,31 +88,64 @@ export function SignupForm() {
       }
       if (!form.email.trim()) return "Work email is required.";
       if (form.password.length < 8) return "Use a password with at least 8 characters.";
-      if (form.shortBio.trim().length < 20) {
-        return "Bio is required. Add at least 2 sentences so attendees know why to trust you.";
-      }
     }
 
     if (currentStep >= 2) {
       const review = form.reviews[currentStep - 2];
-      if (!review.reviewerName.trim()) return `Review ${currentStep - 1} needs a reviewer name.`;
+      const hasAnyReviewInput =
+        review.reviewerName.trim().length > 0 ||
+        review.reviewText.trim().length > 0 ||
+        review.reviewerContext.trim().length > 0;
+      if (!hasAnyReviewInput) return null;
+      if (!review.reviewerName.trim()) {
+        return `Review ${currentStep - 1} needs a reviewer name. You can hit Skip review and add it later in Settings.`;
+      }
       if (review.reviewText.trim().length < 20) {
-        return `Review ${currentStep - 1} needs at least 20 characters of review text.`;
+        return `Review ${currentStep - 1} needs at least 20 characters of review text. You can hit Skip review and add it later in Settings.`;
       }
     }
 
     return null;
   }
 
-  function goNext() {
+  async function goNext() {
     const error = validateStep(step);
     if (error) {
       setClientError(error);
       return;
     }
 
+    if (step === 0) {
+      setCheckingEmail(true);
+      const result = await checkSignupEmail(form.email);
+      setCheckingEmail(false);
+      if (!result.ok) {
+        setClientError(result.error);
+        return;
+      }
+    }
+
     setClientError(null);
     setStep((current) => Math.min(current + 1, steps.length - 1));
+  }
+
+  function skipCurrentReview() {
+    const reviewIndex = step - 2;
+    if (reviewIndex < 0) return;
+
+    setClientError(null);
+    updateReview(reviewIndex, blankReview());
+    setStep((current) => Math.min(current + 1, steps.length - 1));
+  }
+
+  function skipAndSubmitCurrentReview(event: MouseEvent<HTMLButtonElement>) {
+    const formElement = event.currentTarget.form;
+    const reviewIndex = step - 2;
+    if (reviewIndex >= 0) {
+      updateReview(reviewIndex, blankReview());
+    }
+    setClientError(null);
+    window.setTimeout(() => formElement?.requestSubmit(), 0);
   }
 
   return (
@@ -136,13 +175,19 @@ export function SignupForm() {
             label="Full name"
             autoComplete="name"
             value={form.fullName}
-            onChange={(event) => setForm({ ...form, fullName: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, fullName: event.target.value });
+            }}
             required
           />
           <Input
             label="Webinar domain prefix"
             value={form.domainPrefix}
-            onChange={(event) => setForm({ ...form, domainPrefix: event.target.value.toLowerCase() })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, domainPrefix: event.target.value.toLowerCase() });
+            }}
             required
             placeholder="arcmortgage"
             hint={`Your webinar domain will be ${formatWebinarDomain(form.domainPrefix || "arcmortgage")}.`}
@@ -155,7 +200,10 @@ export function SignupForm() {
             type="email"
             autoComplete="email"
             value={form.email}
-            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, email: event.target.value });
+            }}
             required
           />
           <Input
@@ -163,16 +211,22 @@ export function SignupForm() {
             type="password"
             autoComplete="new-password"
             value={form.password}
-            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, password: event.target.value });
+            }}
             required
             hint="Use at least 8 characters. You’ll use this to manage registrants and reminders."
           />
           <Textarea
-            label="Presenter bio"
+            label="Presenter bio (optional)"
             value={form.shortBio}
-            onChange={(event) => setForm({ ...form, shortBio: event.target.value })}
-            required
-            hint="Write 2–4 sentences about who you are, who you help, and why people should trust you."
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, shortBio: event.target.value });
+            }}
+            placeholder={samplePresenterBio}
+            hint="Optional. Use the sample as a guide: 2–4 sentences about who you help and why buyers should trust you."
           />
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Presenter headshot/profile image</span>
@@ -231,32 +285,47 @@ export function SignupForm() {
               type="number"
               min={0}
               value={form.yearsExperience}
-              onChange={(event) => setForm({ ...form, yearsExperience: event.target.value })}
+              onChange={(event) => {
+                setClientError(null);
+                setForm({ ...form, yearsExperience: event.target.value });
+              }}
             />
             <Input
               label="Families helped"
               type="number"
               min={0}
               value={form.familiesHelped}
-              onChange={(event) => setForm({ ...form, familiesHelped: event.target.value })}
+              onChange={(event) => {
+                setClientError(null);
+                setForm({ ...form, familiesHelped: event.target.value });
+              }}
             />
           </div>
           <Input
             label="Total loan volume"
             value={form.totalLoanVolume}
-            onChange={(event) => setForm({ ...form, totalLoanVolume: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, totalLoanVolume: event.target.value });
+            }}
             placeholder="$75M+"
           />
           <Input
             label="Specialty focus"
             value={form.specialtyFocus}
-            onChange={(event) => setForm({ ...form, specialtyFocus: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, specialtyFocus: event.target.value });
+            }}
             placeholder="First-time buyers, FHA, down payment assistance"
           />
           <Input
             label="License states"
             value={form.licenseStates}
-            onChange={(event) => setForm({ ...form, licenseStates: event.target.value })}
+            onChange={(event) => {
+              setClientError(null);
+              setForm({ ...form, licenseStates: event.target.value });
+            }}
             hint="Optional presenter credential only. Webinar state/location is set per webinar."
             placeholder="CA, AZ"
           />
@@ -285,10 +354,10 @@ export function SignupForm() {
         </div>
       ) : null}
 
-      <div className="flex gap-3">
+      <div className={step >= 2 ? "grid gap-3 sm:grid-cols-3" : "flex gap-3"}>
         {step > 0 ? (
           <Button
-            className="flex-1"
+            className={step >= 2 ? "w-full" : "flex-1"}
             type="button"
             variant="secondary"
             onClick={() => {
@@ -300,23 +369,47 @@ export function SignupForm() {
           </Button>
         ) : null}
         {step < steps.length - 1 ? (
-          <Button className="flex-1" type="button" onClick={goNext}>
-            Continue
-          </Button>
+          <>
+            {step >= 2 ? (
+              <Button className="w-full" type="button" variant="secondary" onClick={skipCurrentReview}>
+                Skip review
+              </Button>
+            ) : null}
+            <Button
+              className={step >= 2 ? "w-full" : "flex-1"}
+              type="button"
+              onClick={goNext}
+              disabled={checkingEmail}
+            >
+              {checkingEmail ? "Checking..." : "Continue"}
+            </Button>
+          </>
         ) : (
-          <Button
-            className="flex-1"
-            type="submit"
-            onClick={(event) => {
-              const error = validateStep(step);
-              if (error) {
-                event.preventDefault();
-                setClientError(error);
-              }
-            }}
-          >
-            Create account
-          </Button>
+          <>
+            <Button
+              className="w-full"
+              type="button"
+              variant="secondary"
+              onClick={skipAndSubmitCurrentReview}
+            >
+              Skip and create account
+            </Button>
+            <Button
+              className="w-full"
+              type="submit"
+              onClick={(event) => {
+                const error = validateStep(step);
+                if (error) {
+                  event.preventDefault();
+                  setClientError(error);
+                } else {
+                  setClientError(null);
+                }
+              }}
+            >
+              Create account
+            </Button>
+          </>
         )}
       </div>
     </form>
@@ -337,14 +430,13 @@ function ReviewStep({
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Client review {reviewNumber}</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Add a testimonial that can appear on your webinar landing page.
+          Add a testimonial that can appear on your webinar landing page, or skip this and add it later in Settings.
         </p>
       </div>
       <Input
         label="Reviewer name"
         value={review.reviewerName}
         onChange={(event) => onChange({ reviewerName: event.target.value })}
-        required
       />
       <Input
         label="Borrower type / reviewer context (optional)"
@@ -357,7 +449,6 @@ function ReviewStep({
         label="Review text"
         value={review.reviewText}
         onChange={(event) => onChange({ reviewText: event.target.value })}
-        required
         hint="Minimum 20 characters. Keep it specific and believable."
       />
       <Input

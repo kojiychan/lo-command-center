@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormState } from "react-dom";
 import { signInWithPassword } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,14 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
         autoComplete="current-password"
         required
       />
+      <div className="-mt-2 text-right">
+        <Link
+          className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+          href="/forgot-password"
+        >
+          Forgot password?
+        </Link>
+      </div>
 
       {state.error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
