@@ -18,7 +18,11 @@ export type WebinarContentUpdateInput = {
 
 export async function createWebinarForUser(userId: string, input: WebinarFormInput) {
   const supabase = await createClient();
-  const slug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
+  const baseSlug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
+  const slugResult = await nextAvailableSlug(supabase, baseSlug);
+  if ("error" in slugResult) {
+    return { error: slugResult.error };
+  }
 
   const { data: webinar, error: webinarError } = await supabase
     .from("webinars")
@@ -42,7 +46,7 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
 
   const { error: pageError } = await supabase.from("webinar_pages").insert({
     webinar_id: webinar.id,
-    slug,
+    slug: slugResult.slug,
     headline: input.headline,
     subheadline: input.subheadline ?? null,
     hero_bullets: input.hero_bullets,
@@ -63,6 +67,34 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
   await applyTemplateReminderCopy(webinar.id, input.template_type);
 
   return { ok: true as const, webinarId: webinar.id };
+}
+
+async function nextAvailableSlug(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  baseSlug: string,
+) {
+  const { data, error } = await supabase
+    .from("webinar_pages")
+    .select("slug")
+    .or(`slug.eq.${baseSlug},slug.like.${baseSlug}-%`);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  const usedSlugs = new Set((data ?? []).map((page) => page.slug));
+  if (!usedSlugs.has(baseSlug)) {
+    return { slug: baseSlug };
+  }
+
+  for (let suffix = 1; suffix < 1000; suffix += 1) {
+    const candidate = `${baseSlug}-${suffix}`;
+    if (!usedSlugs.has(candidate)) {
+      return { slug: candidate };
+    }
+  }
+
+  return { error: "Could not find an available URL ending. Try a more specific webinar title." };
 }
 
 export async function updateWebinarContentForUser(

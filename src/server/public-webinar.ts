@@ -3,6 +3,7 @@ import type { WebinarTemplateId } from "@/domain/webinars";
 
 export type PublicPresenter = {
   full_name: string | null;
+  domain_prefix: string | null;
   short_bio: string | null;
   years_experience: number | null;
   families_helped: number | null;
@@ -117,7 +118,7 @@ export async function getPublicWebinarLanding(
     admin
       .from("profiles")
       .select(
-        "full_name, short_bio, years_experience, families_helped, total_loan_volume, specialty_focus, license_states, profile_image_url",
+        "full_name, domain_prefix, short_bio, years_experience, families_helped, total_loan_volume, specialty_focus, license_states, profile_image_url",
       )
       .eq("id", w.user_id)
       .maybeSingle(),

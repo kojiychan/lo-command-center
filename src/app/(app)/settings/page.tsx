@@ -77,7 +77,10 @@ export default async function SettingsPage() {
           title="Webinar domain"
           subtitle="Choose the text that appears before your shared webinar domain."
         />
-        <DomainSettingsForm domainPrefix={profile?.domain_prefix ?? ""} />
+        <DomainSettingsForm
+          domainPrefix={profile?.domain_prefix ?? ""}
+          companyName={profile?.company_name ?? ""}
+        />
       </Card>
 
       <Card>

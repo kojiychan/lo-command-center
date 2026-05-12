@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -130,18 +129,15 @@ function optionalText(value: string | undefined) {
 }
 
 async function appBaseUrl() {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const explicit =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   if (explicit) return explicit;
 
   const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL?.replace(/\/$/, "");
   if (vercelUrl) return `https://${vercelUrl}`;
 
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-  if (!host) return undefined;
-
-  const proto = headerStore.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+  return "https://realestatewebinar.io";
 }
 
 function parseReviewsFromFormData(formData: FormData) {
@@ -385,13 +381,13 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
 
   const fullName = `${parsed.data.firstName} ${parsed.data.lastName}`.trim();
   const supabase = await createClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const siteUrl = await appBaseUrl();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: { full_name: fullName, phone: parsed.data.phone },
-      emailRedirectTo: siteUrl ? `${siteUrl.replace(/\/$/, "")}/auth/callback` : undefined,
+      emailRedirectTo: siteUrl ? `${siteUrl}/auth/callback` : undefined,
     },
   });
 

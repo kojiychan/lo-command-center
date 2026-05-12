@@ -23,6 +23,7 @@ type ProfileSettingsFormProps = {
 
 type DomainSettingsFormProps = {
   domainPrefix: string;
+  companyName: string;
 };
 
 type EmailSettingsFormProps = {
@@ -57,6 +58,22 @@ const initialState: SettingsFormState = {
   message: null,
 };
 
+function formatPhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)})${digits.slice(3)}`;
+
+  return `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function domainPrefixFromCompany(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 63);
+}
+
 export function ProfileSettingsForm({
   firstName,
   lastName,
@@ -71,7 +88,7 @@ export function ProfileSettingsForm({
     firstName,
     lastName,
     companyName,
-    phone,
+    phone: formatPhoneNumber(phone),
     shortBio,
     profileImageUrl,
   });
@@ -82,7 +99,7 @@ export function ProfileSettingsForm({
         firstName: profileState.profile?.firstName ?? current.firstName,
         lastName: profileState.profile?.lastName ?? current.lastName,
         companyName: profileState.profile?.companyName ?? current.companyName,
-        phone: profileState.profile?.phone ?? current.phone,
+        phone: formatPhoneNumber(profileState.profile?.phone ?? current.phone),
         shortBio: profileState.profile?.shortBio ?? current.shortBio,
         profileImageUrl:
           profileState.profile && "profileImageUrl" in profileState.profile
@@ -124,9 +141,12 @@ export function ProfileSettingsForm({
               name="phone"
               type="tel"
               value={values.phone}
-              onChange={(event) => setValues({ ...values, phone: event.target.value })}
+              onChange={(event) =>
+                setValues({ ...values, phone: formatPhoneNumber(event.target.value) })
+              }
               readOnly={!editing}
-              placeholder="(555) 555-1212"
+              placeholder="(555)555-1212"
+              maxLength={13}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 read-only:bg-slate-50 focus:border-emerald-500 focus:ring-4"
             />
           </label>
@@ -207,15 +227,20 @@ export function ProfileSettingsForm({
   );
 }
 
-export function DomainSettingsForm({ domainPrefix }: DomainSettingsFormProps) {
+export function DomainSettingsForm({ domainPrefix, companyName }: DomainSettingsFormProps) {
   const [domainState, domainAction] = useFormState(updateDomainPrefix, initialState);
-  const [value, setValue] = useState(domainPrefix);
+  const initialPrefix = domainPrefix || domainPrefixFromCompany(companyName);
+  const [value, setValue] = useState(initialPrefix);
 
   useEffect(() => {
     if (typeof domainState.domainPrefix !== "undefined") {
       setValue(domainState.domainPrefix ?? "");
     }
   }, [domainState.domainPrefix]);
+
+  useEffect(() => {
+    setValue(domainPrefix || domainPrefixFromCompany(companyName));
+  }, [companyName, domainPrefix]);
 
   return (
     <form action={domainAction} className="space-y-4">

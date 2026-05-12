@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const WEBINAR_BASE_DOMAIN = "realestatewebinar.com";
+export const WEBINAR_BASE_DOMAIN =
+  process.env.NEXT_PUBLIC_WEBINAR_BASE_DOMAIN || "realestatewebinar.io";
 
 const domainPrefixPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 

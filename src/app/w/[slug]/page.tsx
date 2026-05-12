@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import {
   getPublicWebinarLanding,
   type PublicPresenter,
@@ -8,6 +9,7 @@ import { RegisterForm } from "@/components/public/register-form";
 import { WebinarViewTracker } from "@/components/analytics/webinar-view-tracker";
 import { CountdownTimer } from "@/components/public/countdown-timer";
 import { WebinarTime } from "@/components/public/webinar-time";
+import { WEBINAR_BASE_DOMAIN } from "@/domain/profiles";
 import { formatInTimeZone } from "@/lib/timezone-utils";
 import { getWebinarTemplate } from "@/lib/webinarTemplates";
 
@@ -23,6 +25,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
   const heroBullets = data.hero_bullets.length > 0 ? data.hero_bullets : template.defaultHeroBullets;
   const agendaItems = data.agenda_items.length > 0 ? data.agenda_items : template.defaultAgenda;
   const presenterName = data.presenter?.full_name ?? w.host_name;
+
+  enforcePresenterSubdomain({
+    slug: data.slug,
+    domainPrefix: data.presenter?.domain_prefix ?? null,
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -176,7 +183,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
               Quick answers to reduce friction before you register.
             </p>
           </div>
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+          <div className="mt-8 grid items-start gap-4 lg:grid-cols-2">
             {template.defaultFaqs.map((faq) => (
               <Faq key={faq.question} q={faq.question} a={faq.answer} />
             ))}
@@ -228,6 +235,59 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
       <div className="h-20 md:hidden" />
     </div>
   );
+}
+
+function enforcePresenterSubdomain({
+  slug,
+  domainPrefix,
+}: {
+  slug: string;
+  domainPrefix: string | null;
+}) {
+  const headerStore = headers();
+  const requestHost = (
+    headerStore.get("x-forwarded-host") ??
+    headerStore.get("host") ??
+    ""
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const hostname = requestHost.split(":")[0];
+
+  if (!hostname || isLocalHost(hostname) || hostname.endsWith(".vercel.app")) {
+    return;
+  }
+
+  const baseDomains = Array.from(
+    new Set([WEBINAR_BASE_DOMAIN, "realestatewebinar.io", "realestatewebinar.com"].map((domain) => domain.toLowerCase())),
+  );
+  const matchedBaseDomain = baseDomains.find(
+    (domain) => hostname === domain || hostname === `www.${domain}` || hostname.endsWith(`.${domain}`),
+  );
+
+  if (!matchedBaseDomain) {
+    return;
+  }
+
+  const normalizedPrefix = domainPrefix?.toLowerCase() ?? "";
+  const expectedHost = normalizedPrefix ? `${normalizedPrefix}.${matchedBaseDomain}` : null;
+
+  if (!expectedHost) {
+    notFound();
+  }
+
+  if (hostname === matchedBaseDomain || hostname === `www.${matchedBaseDomain}`) {
+    redirect(`https://${expectedHost}/w/${slug}`);
+  }
+
+  if (hostname !== expectedHost) {
+    notFound();
+  }
+}
+
+function isLocalHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function InfoPill({
@@ -423,7 +483,7 @@ function initials(name: string) {
 
 function Faq({ q, a }: { q: string; a: string }) {
   return (
-    <details className="group rounded-2xl border border-slate-200 bg-slate-50 p-5">
+    <details className="group self-start rounded-2xl border border-slate-200 bg-slate-50 p-5">
       <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900">
         <span className="flex items-center justify-between gap-3">
           <span>{q}</span>
