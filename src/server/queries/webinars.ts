@@ -54,42 +54,83 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
   const supabase = await createClient();
   const { data: webinar, error } = await supabase
     .from("webinars")
-    .select(
-      `
-      *,
-      webinar_pages (*),
-      leads (
-        *,
-        email_messages (*),
-        sms_messages (*)
-      )
-    `,
-    )
+    .select("*")
     .eq("id", webinarId)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error || !webinar) {
+    if (error) console.error("Webinar workspace load failed:", error.message);
     notFound();
   }
 
-  const pageRaw = webinar.webinar_pages as WebinarPage | WebinarPage[] | null | undefined;
-  const page: WebinarPage | null = Array.isArray(pageRaw) ? pageRaw[0] ?? null : pageRaw ?? null;
+  const { data: page, error: pageError } = await supabase
+    .from("webinar_pages")
+    .select("*")
+    .eq("webinar_id", webinar.id)
+    .maybeSingle();
 
-  if (!page) {
+  if (pageError || !page) {
+    if (pageError) console.error("Webinar page load failed:", pageError.message);
     notFound();
   }
 
-  const leadsRaw = webinar.leads as Lead[] | null | undefined;
-  const leads = (Array.isArray(leadsRaw) ? leadsRaw : [])
+  const { data: leadsRaw, error: leadsError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("webinar_id", webinar.id)
+    .order("registered_at", { ascending: false });
+
+  if (leadsError) {
+    console.error("Webinar leads load failed:", leadsError.message);
+  }
+
+  const baseLeads = (leadsRaw ?? []) as Lead[];
+  const leadIds = baseLeads.map((lead) => lead.id);
+
+  const [{ data: emailMessages, error: emailError }, { data: smsMessages, error: smsError }] =
+    leadIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("email_messages")
+            .select("*")
+            .in("lead_id", leadIds)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("sms_messages")
+            .select("*")
+            .in("lead_id", leadIds)
+            .order("created_at", { ascending: false }),
+        ])
+      : [
+          { data: [], error: null },
+          { data: [], error: null },
+        ];
+
+  if (emailError) console.error("Email history load failed:", emailError.message);
+  if (smsError) console.error("SMS history load failed:", smsError.message);
+
+  const emailByLead = new Map<string, NonNullable<Lead["email_messages"]>>();
+  for (const message of emailMessages ?? []) {
+    if (!message.lead_id) continue;
+    const current = emailByLead.get(message.lead_id) ?? [];
+    current.push(message);
+    emailByLead.set(message.lead_id, current);
+  }
+
+  const smsByLead = new Map<string, NonNullable<Lead["sms_messages"]>>();
+  for (const message of smsMessages ?? []) {
+    if (!message.lead_id) continue;
+    const current = smsByLead.get(message.lead_id) ?? [];
+    current.push(message);
+    smsByLead.set(message.lead_id, current);
+  }
+
+  const leads = baseLeads
     .map((lead) => ({
       ...lead,
-      email_messages: (lead.email_messages ?? []).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      ),
-      sms_messages: (lead.sms_messages ?? []).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      ),
+      email_messages: emailByLead.get(lead.id) ?? [],
+      sms_messages: smsByLead.get(lead.id) ?? [],
     }))
     .sort((a, b) => new Date(b.registered_at).getTime() - new Date(a.registered_at).getTime());
 
@@ -106,13 +147,9 @@ export async function getWebinarWorkspaceData(userId: string, webinarId: string)
     .order("scheduled_for", { ascending: true })
     .limit(50);
 
-  const { webinar_pages, leads: _joinedLeads, ...webinarRow } = webinar;
-  void webinar_pages;
-  void _joinedLeads;
-
   return {
-    webinar: webinarRow as Webinar,
-    page,
+    webinar: webinar as Webinar,
+    page: page as WebinarPage,
     leads,
     templates: (templates ?? []) as ReminderTemplate[],
     reminderEvents: (reminderEvents ?? []) as ReminderEvent[],

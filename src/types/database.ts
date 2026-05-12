@@ -25,6 +25,7 @@ export type Profile = {
   id: string;
   full_name: string | null;
   company_name: string | null;
+  phone: string | null;
   domain_prefix: string | null;
   short_bio: string | null;
   years_experience: number | null;

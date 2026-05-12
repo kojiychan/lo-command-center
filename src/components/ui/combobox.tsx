@@ -67,8 +67,7 @@ export function Combobox({
           <div className="px-3 py-3 text-sm text-slate-600">No matches.</div>
         ) : null}
       </div>
-      <p className="text-xs text-slate-500">Tip: search for “Los Angeles”, “New York”, or “America/…”.</p>
+      <p className="text-xs text-slate-500">Tip: search for Alaska, HST, PST, MST, CST, or EST.</p>
     </div>
   );
 }
-

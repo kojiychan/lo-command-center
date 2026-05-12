@@ -1,4 +1,4 @@
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { fromZonedTime, getTimezoneOffset } from "date-fns-tz";
 
 export type TimezoneOption = {
   value: string;
@@ -39,48 +39,36 @@ export function formatInTimeZone(iso: string, timeZone: string) {
 
 /** Returns offset minutes for `timeZone` at `date` (handles DST). */
 export function getOffsetMinutes(timeZone: string, date = new Date()) {
-  const zoned = toZonedTime(date, timeZone);
-  return Math.round((zoned.getTime() - date.getTime()) / 60000);
+  return Math.round(getTimezoneOffset(timeZone, date) / 60000);
 }
 
 function formatOffset(offsetMinutes: number) {
-  const sign = offsetMinutes <= 0 ? "+" : "-";
+  const sign = offsetMinutes >= 0 ? "+" : "-";
   const abs = Math.abs(offsetMinutes);
   const hh = String(Math.floor(abs / 60)).padStart(2, "0");
   const mm = String(abs % 60).padStart(2, "0");
   return `GMT${sign}${hh}:${mm}`;
 }
 
+const US_WEBINAR_TIMEZONES: Array<{ value: string; labelPrefix: string }> = [
+  { value: "America/Anchorage", labelPrefix: "Alaska" },
+  { value: "Pacific/Honolulu", labelPrefix: "HST" },
+  { value: "America/Los_Angeles", labelPrefix: "PST" },
+  { value: "America/Denver", labelPrefix: "MST" },
+  { value: "America/Chicago", labelPrefix: "CST" },
+  { value: "America/New_York", labelPrefix: "EST" },
+];
+
 /**
- * Build a timezone option list using `Intl.supportedValuesOf('timeZone')` when available.
- * Falls back to a small curated list if not supported.
+ * Keep webinar creation to the US timezones the product supports.
  */
 export function buildTimezoneOptions(referenceDate = new Date()): TimezoneOption[] {
-  const values =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (Intl as any).supportedValuesOf?.("timeZone") as string[] | undefined;
-
-  const base = values?.length
-    ? values
-    : [
-        "America/Los_Angeles",
-        "America/Denver",
-        "America/Chicago",
-        "America/New_York",
-        "America/Phoenix",
-        "Pacific/Honolulu",
-      ];
-
-  const options = base.map((tz) => {
-    const offsetMinutes = getOffsetMinutes(tz, referenceDate);
-    const city = tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
-    const region = tz.startsWith("America/")
-      ? "Time"
-      : tz.split("/")[0]?.replace(/_/g, " ");
-    const label = `(${formatOffset(offsetMinutes)}) ${region} — ${city}`;
-    return { value: tz, label, offsetMinutes };
+  const options = US_WEBINAR_TIMEZONES.map((tz) => {
+    const offsetMinutes = getOffsetMinutes(tz.value, referenceDate);
+    const city = tz.value.split("/").pop()?.replace(/_/g, " ") ?? tz.value;
+    const label = `${tz.labelPrefix} (${formatOffset(offsetMinutes)}) — ${city}`;
+    return { value: tz.value, label, offsetMinutes };
   });
 
   return options.sort((a, b) => a.offsetMinutes - b.offsetMinutes || a.label.localeCompare(b.label));
 }
-

@@ -16,6 +16,7 @@ type ProfileSettingsFormProps = {
   firstName: string;
   lastName: string;
   companyName: string;
+  phone: string;
   shortBio: string;
   profileImageUrl: string | null;
 };
@@ -60,6 +61,7 @@ export function ProfileSettingsForm({
   firstName,
   lastName,
   companyName,
+  phone,
   shortBio,
   profileImageUrl,
 }: ProfileSettingsFormProps) {
@@ -69,6 +71,7 @@ export function ProfileSettingsForm({
     firstName,
     lastName,
     companyName,
+    phone,
     shortBio,
     profileImageUrl,
   });
@@ -79,6 +82,7 @@ export function ProfileSettingsForm({
         firstName: profileState.profile?.firstName ?? current.firstName,
         lastName: profileState.profile?.lastName ?? current.lastName,
         companyName: profileState.profile?.companyName ?? current.companyName,
+        phone: profileState.profile?.phone ?? current.phone,
         shortBio: profileState.profile?.shortBio ?? current.shortBio,
         profileImageUrl:
           profileState.profile && "profileImageUrl" in profileState.profile
@@ -111,6 +115,18 @@ export function ProfileSettingsForm({
               onChange={(event) => setValues({ ...values, lastName: event.target.value })}
               readOnly={!editing}
               required
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 read-only:bg-slate-50 focus:border-emerald-500 focus:ring-4"
+            />
+          </label>
+          <label className="block space-y-1.5 sm:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</span>
+            <input
+              name="phone"
+              type="tel"
+              value={values.phone}
+              onChange={(event) => setValues({ ...values, phone: event.target.value })}
+              readOnly={!editing}
+              placeholder="(555) 555-1212"
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 read-only:bg-slate-50 focus:border-emerald-500 focus:ring-4"
             />
           </label>

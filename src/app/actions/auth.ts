@@ -1,9 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { domainPrefixSchema, optionalDomainPrefixSchema } from "@/domain/profiles";
+import { optionalDomainPrefixSchema } from "@/domain/profiles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/server/auth/current-user";
@@ -31,6 +32,7 @@ export type SettingsFormState = {
     firstName: string;
     lastName: string;
     companyName: string;
+    phone: string;
     shortBio: string;
     profileImageUrl?: string | null;
   };
@@ -51,6 +53,7 @@ const profileSettingsSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required."),
   lastName: z.string().trim().min(1, "Last name is required."),
   companyName: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
   shortBio: z.string().trim().optional(),
 });
 
@@ -76,59 +79,9 @@ const resetPasswordSchema = z
 const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   password: z.string().min(8, "Use at least 8 characters."),
-  fullName: z.string().trim().min(1, "Full name is required."),
-  domainPrefix: domainPrefixSchema,
-  shortBio: z.string().trim().optional(),
-  yearsExperience: z
-    .string()
-    .trim()
-    .refine((value) => value === "" || /^\d+$/.test(value), "Years experience must be a whole number.")
-    .transform((value) => (value === "" ? "" : Number(value))),
-  familiesHelped: z
-    .string()
-    .trim()
-    .refine((value) => value === "" || /^\d+$/.test(value), "Families helped must be a whole number.")
-    .transform((value) => (value === "" ? "" : Number(value))),
-  totalLoanVolume: z.string().trim().optional(),
-  specialtyFocus: z.string().trim().optional(),
-  licenseStates: z.string().trim().optional(),
-  reviews: z
-    .array(
-      z.object({
-        reviewerName: z.string().trim(),
-        reviewerContext: z.string().trim().optional(),
-        reviewText: z.string().trim(),
-        rating: z.union([z.coerce.number().int().min(1).max(5), z.literal("")]),
-      }),
-    )
-    .length(3),
-}).superRefine((value, ctx) => {
-  value.reviews.forEach((review, index) => {
-    const hasAnyReviewInput =
-      review.reviewerName.length > 0 ||
-      review.reviewText.length > 0 ||
-      (review.reviewerContext?.length ?? 0) > 0;
-
-    if (!hasAnyReviewInput) {
-      return;
-    }
-
-    if (!review.reviewerName) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["reviews", index, "reviewerName"],
-        message: `Review ${index + 1} needs a reviewer name.`,
-      });
-    }
-
-    if (review.reviewText.length < 20) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["reviews", index, "reviewText"],
-        message: `Review ${index + 1} needs at least 20 characters of review text.`,
-      });
-    }
-  });
+  firstName: z.string().trim().min(1, "First name is required."),
+  lastName: z.string().trim().min(1, "Last name is required."),
+  phone: z.string().trim().min(7, "Phone number is required."),
 });
 
 const testimonialsSettingsSchema = z.object({
@@ -171,21 +124,24 @@ const testimonialsSettingsSchema = z.object({
   });
 });
 
-function optionalNumber(value: number | "") {
-  return value === "" ? null : value;
-}
-
 function optionalText(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text.length > 0 ? text : null;
 }
 
-function appBaseUrl() {
+async function appBaseUrl() {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (explicit) return explicit;
 
   const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL?.replace(/\/$/, "");
-  return vercelUrl ? `https://${vercelUrl}` : undefined;
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  if (!host) return undefined;
+
+  const proto = headerStore.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
 }
 
 function parseReviewsFromFormData(formData: FormData) {
@@ -348,7 +304,7 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  const siteUrl = appBaseUrl();
+  const siteUrl = await appBaseUrl();
   const redirectTo = siteUrl
     ? `${siteUrl}/auth/callback?next=/reset-password`
     : undefined;
@@ -415,31 +371,26 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
   const parsed = signupSchema.safeParse({
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
-    fullName: String(formData.get("full_name") ?? ""),
-    domainPrefix: String(formData.get("domain_prefix") ?? ""),
-    shortBio: String(formData.get("short_bio") ?? ""),
-    yearsExperience: String(formData.get("years_experience") ?? ""),
-    familiesHelped: String(formData.get("families_helped") ?? ""),
-    totalLoanVolume: String(formData.get("total_loan_volume") ?? ""),
-    specialtyFocus: String(formData.get("specialty_focus") ?? ""),
-    licenseStates: String(formData.get("license_states") ?? ""),
-    reviews: parseReviewsFromFormData(formData),
+    firstName: String(formData.get("first_name") ?? ""),
+    lastName: String(formData.get("last_name") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
   });
 
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Please complete the required onboarding fields.",
+      error: parsed.error.issues[0]?.message ?? "Please complete the required signup fields.",
       message: null,
     };
   }
 
+  const fullName = `${parsed.data.firstName} ${parsed.data.lastName}`.trim();
   const supabase = await createClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { full_name: parsed.data.fullName },
+      data: { full_name: fullName, phone: parsed.data.phone },
       emailRedirectTo: siteUrl ? `${siteUrl.replace(/\/$/, "")}/auth/callback` : undefined,
     },
   });
@@ -456,35 +407,19 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
     return { error: accountAlreadyExistsMessage(), message: null };
   }
 
-  const profileImageFile = getProfileImageFile(formData);
-  const profileImageResult = profileImageFile
-    ? await uploadProfileImage(data.user.id, profileImageFile)
-    : null;
-
-  if (profileImageResult && "error" in profileImageResult) {
-    return { error: profileImageResult.error, message: null };
-  }
-
   const admin = createAdminClient();
   if (!admin) {
     return {
       error:
-        "Account created, but presenter onboarding could not be saved because the service role key is missing.",
+        "Account created, but profile setup could not be saved because the service role key is missing.",
       message: null,
     };
   }
 
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
-    full_name: parsed.data.fullName,
-    domain_prefix: parsed.data.domainPrefix,
-    short_bio: optionalText(parsed.data.shortBio),
-    years_experience: optionalNumber(parsed.data.yearsExperience),
-    families_helped: optionalNumber(parsed.data.familiesHelped),
-    total_loan_volume: optionalText(parsed.data.totalLoanVolume),
-    specialty_focus: optionalText(parsed.data.specialtyFocus),
-    license_states: optionalText(parsed.data.licenseStates),
-    profile_image_url: profileImageResult?.publicUrl ?? null,
+    full_name: fullName,
+    phone: parsed.data.phone,
   });
 
   if (profileError) {
@@ -494,28 +429,13 @@ export async function signUp(_prev: unknown, formData: FormData): Promise<AuthFo
     return { error: profileError.message, message: null };
   }
 
-  const reviewsToSave = completedReviews(parsed.data.reviews);
-  if (reviewsToSave.length > 0) {
-    const { error: testimonialsError } = await admin.from("testimonials").upsert(
-      reviewsToSave.map((review, index) => ({
-        user_id: data.user!.id,
-        reviewer_name: review.reviewerName,
-        reviewer_context: optionalText(review.reviewerContext),
-        review_text: review.reviewText,
-        rating: review.rating === "" ? 5 : review.rating,
-        display_order: index + 1,
-      })),
-      { onConflict: "user_id,display_order" },
-    );
-
-    if (testimonialsError) {
-      return { error: testimonialsError.message, message: null };
-    }
-  }
-
   await ensureDefaultReminderTemplatesForUser(data.user.id);
 
   revalidatePath("/", "layout");
+  if (data.session) {
+    redirect("/dashboard");
+  }
+
   return {
     error: null,
     message:
@@ -571,6 +491,7 @@ export async function updateProfileSettings(
     firstName: String(formData.get("first_name") ?? ""),
     lastName: String(formData.get("last_name") ?? ""),
     companyName: String(formData.get("company_name") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
     shortBio: String(formData.get("short_bio") ?? ""),
   });
 
@@ -593,11 +514,13 @@ export async function updateProfileSettings(
   const update: {
     full_name: string;
     company_name: string | null;
+    phone: string | null;
     short_bio: string | null;
     profile_image_url?: string;
   } = {
     full_name: fullName,
     company_name: optionalText(parsed.data.companyName),
+    phone: optionalText(parsed.data.phone),
     short_bio: optionalText(parsed.data.shortBio),
   };
 
@@ -625,6 +548,7 @@ export async function updateProfileSettings(
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       companyName: parsed.data.companyName ?? "",
+      phone: parsed.data.phone ?? "",
       shortBio: parsed.data.shortBio ?? "",
       ...(imageResult && "publicUrl" in imageResult
         ? { profileImageUrl: imageResult.publicUrl }

@@ -5,12 +5,12 @@ import { createWebinar } from "@/app/actions/webinars";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Combobox } from "@/components/ui/combobox";
 import { useUserTimezone } from "@/hooks/use-user-timezone";
 import {
   buildTimezoneOptions,
   localDateTimeInTimeZoneToUtc,
 } from "@/lib/timezone-utils";
+import { slugify } from "@/lib/slug";
 import {
   WEBINAR_TEMPLATE_LIST,
   getWebinarTemplate,
@@ -21,54 +21,82 @@ import {
 type EditableTemplateFields = {
   title: string;
   description: string;
-  ctaText: string;
   headline: string;
   subheadline: string;
-  buttonText: string;
   heroBullets: string;
   agendaItems: string;
+  urlEnding: string;
+};
+
+type NewWebinarFormProps = {
+  hostName: string;
 };
 
 function templateFields(template: WebinarTemplateConfig): EditableTemplateFields {
   return {
     title: template.recommendedTitle,
     description: template.recommendedDescription,
-    ctaText: template.defaultCTA,
     headline: template.defaultHeadline,
     subheadline: template.defaultSubheadline,
-    buttonText: template.defaultCTA,
     heroBullets: template.defaultHeroBullets.join("\n"),
     agendaItems: template.defaultAgenda.join("\n"),
+    urlEnding: slugify(template.name),
   };
 }
 
-export function NewWebinarForm({ hostName }: { hostName: string }) {
-  const [startsLocal, setStartsLocal] = useState("");
+const hourOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const minuteOptions = ["00", "15", "30", "45"];
+const meridiemOptions = ["AM", "PM"] as const;
+
+function extractMeetingUrl(text: string) {
+  const meetUrl = text.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i)?.[0];
+  if (meetUrl) return meetUrl;
+
+  const firstUrl = text.match(/https?:\/\/\S+/i)?.[0];
+  return firstUrl?.replace(/[),.;]+$/, "") ?? text;
+}
+
+export function NewWebinarForm({ hostName }: NewWebinarFormProps) {
+  const [startDate, setStartDate] = useState("");
+  const [startHour, setStartHour] = useState("06");
+  const [startMinute, setStartMinute] = useState("00");
+  const [startMeridiem, setStartMeridiem] = useState<(typeof meridiemOptions)[number]>("PM");
   const userTz = useUserTimezone();
   const [timezone, setTimezone] = useState("America/Los_Angeles");
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<WebinarTemplateId | null>(null);
+  const [joinUrl, setJoinUrl] = useState("");
   const [customized, setCustomized] = useState(false);
   const [fields, setFields] = useState<EditableTemplateFields>({
     title: "",
     description: "",
-    ctaText: "",
     headline: "",
     subheadline: "",
-    buttonText: "",
     heroBullets: "",
     agendaItems: "",
+    urlEnding: "",
   });
-
-  useEffect(() => {
-    if (userTz) {
-      setTimezone(userTz);
-    }
-  }, [userTz]);
 
   const timezoneOptions = useMemo(() => buildTimezoneOptions(), []);
 
+  useEffect(() => {
+    if (userTz && timezoneOptions.some((option) => option.value === userTz)) {
+      setTimezone(userTz);
+    }
+  }, [timezoneOptions, userTz]);
+
   const startsAtIso = useMemo(() => {
+    if (!startDate) return "";
+    const hour12 = Number(startHour);
+    const hour24 =
+      startMeridiem === "PM"
+        ? hour12 === 12
+          ? 12
+          : hour12 + 12
+        : hour12 === 12
+          ? 0
+          : hour12;
+    const startsLocal = `${startDate}T${String(hour24).padStart(2, "0")}:${startMinute}`;
     if (!startsLocal) return "";
     try {
       const utc = localDateTimeInTimeZoneToUtc(startsLocal, timezone);
@@ -77,9 +105,7 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
     } catch {
       return "";
     }
-  }, [startsLocal, timezone]);
-
-  const selectedTemplate = selectedTemplateId ? getWebinarTemplate(selectedTemplateId) : null;
+  }, [startDate, startHour, startMeridiem, startMinute, timezone]);
 
   function markCustomized(patch: Partial<EditableTemplateFields>) {
     setCustomized(true);
@@ -112,9 +138,12 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
           setError("Pick a valid date and time for the webinar.");
           return;
         }
+        const template = getWebinarTemplate(selectedTemplateId);
         formData.set("starts_at", startsAtIso);
         formData.set("timezone", timezone);
         formData.set("template_type", selectedTemplateId);
+        formData.set("cta_text", template.defaultCTA);
+        formData.set("button_text", template.defaultCTA);
         const result = await createWebinar(formData);
         if (result?.error) {
           setError(result.error);
@@ -160,48 +189,13 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
           })}
         </div>
 
-        {selectedTemplate ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-900">Template preview</div>
-            <div className="mt-3 grid gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Headline</div>
-                <p className="mt-1 text-sm font-medium text-slate-900">{fields.headline}</p>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hero bullets</div>
-                <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                  {fields.heroBullets
-                    .split("\n")
-                    .filter(Boolean)
-                    .slice(0, 5)
-                    .map((item) => (
-                      <li key={item}>• {item}</li>
-                    ))}
-                </ul>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agenda</div>
-                <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                  {fields.agendaItems
-                    .split("\n")
-                    .filter(Boolean)
-                    .slice(0, 6)
-                    .map((item) => (
-                      <li key={item}>• {item}</li>
-                    ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-slate-900">Webinar details</h2>
           <Input
-            label="Webinar title"
+            label="Webinar title *"
             name="title"
             required
             placeholder="First-Time Homebuyer Workshop (DPA + Pre-Approval)"
@@ -209,38 +203,94 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
             onChange={(event) => markCustomized({ title: event.target.value })}
           />
           <Textarea
-            label="Description"
+            label="Description *"
             name="description"
             rows={5}
+            required
             placeholder="What they’ll learn, who it’s for, and what to bring (questions welcome)."
             value={fields.description}
             onChange={(event) => markCustomized({ description: event.target.value })}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Date & time</span>
-              <input
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
-                type="datetime-local"
-                value={startsLocal}
-                onChange={(e) => setStartsLocal(e.target.value)}
-                required
-              />
+              <span className="text-sm font-medium text-slate-700">Date & time *</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2">
+                <input
+                  className="min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  required
+                  aria-label="Webinar date"
+                />
+                <select
+                  value={startHour}
+                  onChange={(event) => setStartHour(event.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  aria-label="Webinar hour"
+                >
+                  {hourOptions.map((hour) => (
+                    <option key={hour} value={hour}>
+                      {hour}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={startMinute}
+                  onChange={(event) => setStartMinute(event.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  aria-label="Webinar minute"
+                >
+                  {minuteOptions.map((minute) => (
+                    <option key={minute} value={minute}>
+                      {minute}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={startMeridiem}
+                  onChange={(event) =>
+                    setStartMeridiem(event.target.value as (typeof meridiemOptions)[number])
+                  }
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                  aria-label="Webinar AM or PM"
+                >
+                  {meridiemOptions.map((meridiem) => (
+                    <option key={meridiem} value={meridiem}>
+                      {meridiem}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <span className="text-xs text-slate-500">
                 Stored in UTC internally; displayed to registrants in the webinar timezone.
               </span>
             </label>
-            <div>
-              <Combobox
-                label="Timezone"
-                name="timezone"
-                options={timezoneOptions}
-                defaultValue={timezone}
-                onValueChange={(v) => setTimezone(v)}
-                required
-              />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700" htmlFor="timezone">
+                Timezone *
+              </label>
+              <div className="relative">
+                <select
+                  id="timezone"
+                  name="timezone"
+                  value={timezone}
+                  onChange={(event) => setTimezone(event.target.value)}
+                  required
+                  className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+                >
+                  {timezoneOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
+                  ▾
+                </span>
+              </div>
               <div className="mt-2 text-xs text-slate-500">
-                Detected: <span className="font-mono">{userTz ?? "—"}</span>
+                Choose Alaska, HST, PST, MST, CST, or EST.
               </div>
             </div>
           </div>
@@ -254,32 +304,38 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
             </p>
           </div>
           <Input
-            label="Join link"
+            label="Join link *"
             name="join_url"
             type="url"
             required
             placeholder="https://zoom.us/j/… or https://meet.google.com/…"
+            value={joinUrl}
+            onChange={(event) => setJoinUrl(event.target.value)}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              const extracted = extractMeetingUrl(pasted);
+              if (extracted !== pasted) {
+                event.preventDefault();
+                setJoinUrl(extracted);
+              }
+            }}
             hint="Shown only after registration in this MVP."
-          />
-          <Input
-            label="CTA line (optional)"
-            name="cta_text"
-            placeholder="Free live training · limited seats"
-            value={fields.ctaText}
-            onChange={(event) => markCustomized({ ctaText: event.target.value })}
           />
         </div>
 
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-slate-900">Landing page</h2>
           <Input
-            label="URL slug"
+            label="URL ending *"
             name="slug"
-            placeholder="first-time-buyer-april"
-            hint="Public URL becomes /w/your-slug (lowercase, dashes)."
+            required
+            placeholder="first-time-homebuyer"
+            value={fields.urlEnding}
+            onChange={(event) => markCustomized({ urlEnding: event.target.value })}
+            hint="Public URL becomes /w/your-ending. You can edit this before creating the webinar."
           />
           <Input
-            label="Headline"
+            label="Headline *"
             name="headline"
             required
             placeholder="Buy your first home with confidence (even if you’re starting at zero down)."
@@ -287,15 +343,16 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
             onChange={(event) => markCustomized({ headline: event.target.value })}
           />
           <Textarea
-            label="Subheadline"
+            label="Subheadline *"
             name="subheadline"
             rows={3}
+            required
             placeholder="Learn how down payment assistance works, what lenders really look at, and the 3 mistakes that delay approvals."
             value={fields.subheadline}
             onChange={(event) => markCustomized({ subheadline: event.target.value })}
           />
           <Textarea
-            label="Hero bullet points"
+            label="Hero bullet points *"
             name="hero_bullets"
             rows={6}
             required
@@ -304,20 +361,13 @@ export function NewWebinarForm({ hostName }: { hostName: string }) {
             onChange={(event) => markCustomized({ heroBullets: event.target.value })}
           />
           <Textarea
-            label="Agenda"
+            label="Agenda *"
             name="agenda_items"
             rows={6}
             required
             hint="One agenda item per line."
             value={fields.agendaItems}
             onChange={(event) => markCustomized({ agendaItems: event.target.value })}
-          />
-          <Input
-            label="Button text"
-            name="button_text"
-            value={fields.buttonText}
-            onChange={(event) => markCustomized({ buttonText: event.target.value })}
-            required
           />
         </div>
       </div>

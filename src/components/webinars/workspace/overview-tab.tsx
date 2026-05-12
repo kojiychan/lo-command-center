@@ -69,6 +69,8 @@ export function OverviewTab({
         className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-3"
       >
         <input type="hidden" name="webinar_id" value={webinar.id} />
+        <input type="hidden" name="cta_text" value={webinar.cta_text ?? ""} />
+        <input type="hidden" name="button_text" value={page.button_text} />
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Landing page content</h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -82,14 +84,6 @@ export function OverviewTab({
               name="title"
               defaultValue={webinar.title}
               required
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">CTA line</span>
-            <input
-              name="cta_text"
-              defaultValue={webinar.cta_text ?? ""}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
             />
           </label>
@@ -139,15 +133,6 @@ export function OverviewTab({
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
             />
             <span className="text-xs text-slate-500">One agenda item per line.</span>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Button text</span>
-            <input
-              name="button_text"
-              defaultValue={page.button_text}
-              required
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
-            />
           </label>
         </div>
         <div className="mt-4 flex justify-end">

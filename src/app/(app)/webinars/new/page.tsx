@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/card";
 import { NewWebinarForm } from "@/components/webinars/new-webinar-form";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/server/auth/current-user";
 
-export default async function NewWebinarPage() {
+export default async function NewWebinarPage({
+  searchParams,
+}: {
+  searchParams?: { setup?: string };
+}) {
   const user = await getCurrentUser();
   if (!user) {
     return null;
@@ -18,6 +23,15 @@ export default async function NewWebinarPage() {
     .maybeSingle();
 
   const hostName = profile?.full_name ?? user.email?.split("@")[0] ?? "Your presenter";
+
+  const { count: webinarCount } = await supabase
+    .from("webinars")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+
+  if ((webinarCount ?? 0) === 0 && searchParams?.setup !== "done") {
+    redirect("/webinars/setup");
+  }
 
   return (
     <div className="space-y-6">

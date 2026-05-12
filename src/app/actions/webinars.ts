@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { optionalDomainPrefixSchema } from "@/domain/profiles";
 import { webinarFormSchema } from "@/domain/webinars";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/server/auth/current-user";
 import {
   createWebinarForUser,
@@ -14,6 +17,227 @@ function linesFromFormValue(value: FormDataEntryValue | null) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+const presenterSetupSchema = z.object({
+  companyName: z.string().trim().optional(),
+  domainPrefix: optionalDomainPrefixSchema,
+  shortBio: z.string().trim().optional(),
+  yearsExperience: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^\d+$/.test(value), "Years experience must be a whole number.")
+    .transform((value) => (value === "" ? null : Number(value))),
+  familiesHelped: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^\d+$/.test(value), "Families helped must be a whole number.")
+    .transform((value) => (value === "" ? null : Number(value))),
+  totalLoanVolume: z.string().trim().optional(),
+  specialtyFocus: z.string().trim().optional(),
+  licenseStates: z.string().trim().optional(),
+  reviews: z
+    .array(
+      z.object({
+        reviewerName: z.string().trim(),
+        reviewerContext: z.string().trim().optional(),
+        reviewText: z.string().trim(),
+        rating: z.union([z.coerce.number().int().min(1).max(5), z.literal("")]),
+      }),
+    )
+    .length(3),
+}).superRefine((value, ctx) => {
+  value.reviews.forEach((review, index) => {
+    const hasAnyReviewInput =
+      review.reviewerName.length > 0 ||
+      review.reviewText.length > 0 ||
+      (review.reviewerContext?.length ?? 0) > 0;
+
+    if (!hasAnyReviewInput) return;
+
+    if (!review.reviewerName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["reviews", index, "reviewerName"],
+        message: `Review ${index + 1} needs a reviewer name, or leave it blank for now.`,
+      });
+    }
+
+    if (review.reviewText.length < 20) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["reviews", index, "reviewText"],
+        message: `Review ${index + 1} needs at least 20 characters, or leave it blank for now.`,
+      });
+    }
+  });
+});
+
+function optionalText(value: string | undefined) {
+  const text = value?.trim() ?? "";
+  return text.length > 0 ? text : null;
+}
+
+function parseReviewsFromFormData(formData: FormData) {
+  return [1, 2, 3].map((idx) => ({
+    reviewerName: String(formData.get(`reviewer_name_${idx}`) ?? ""),
+    reviewerContext: String(formData.get(`reviewer_context_${idx}`) ?? ""),
+    reviewText: String(formData.get(`review_text_${idx}`) ?? ""),
+    rating: String(formData.get(`rating_${idx}`) ?? ""),
+  }));
+}
+
+function completedReviews(
+  reviews: Array<{
+    reviewerName: string;
+    reviewerContext?: string;
+    reviewText: string;
+    rating: number | "";
+  }>,
+) {
+  return reviews.filter(
+    (review) => review.reviewerName.trim().length > 0 && review.reviewText.trim().length >= 20,
+  );
+}
+
+function imageExtension(contentType: string) {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  if (contentType === "image/gif") return "gif";
+  return "jpg";
+}
+
+function getProfileImageFile(formData: FormData) {
+  const value = formData.get("profile_image_file");
+  if (!(value instanceof File) || value.size === 0) return null;
+  return value;
+}
+
+async function uploadPresenterImage(userId: string, file: File) {
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  const maxSizeBytes = 5 * 1024 * 1024;
+
+  if (!allowedTypes.includes(file.type)) {
+    return { error: "Upload a JPG, PNG, WebP, or GIF profile image." };
+  }
+
+  if (file.size > maxSizeBytes) {
+    return { error: "Profile image must be 5MB or smaller." };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Profile image could not be uploaded because the service role key is missing." };
+  }
+
+  const path = `${userId}/headshot-${Date.now()}.${imageExtension(file.type)}`;
+  const { error } = await admin.storage
+    .from("profile-images")
+    .upload(path, file, { contentType: file.type, upsert: true });
+
+  if (error) {
+    return { error: error.message ?? "Could not upload profile image." };
+  }
+
+  const { data } = admin.storage.from("profile-images").getPublicUrl(path);
+  return { publicUrl: data.publicUrl };
+}
+
+async function savePresenterSetup(userId: string, formData: FormData) {
+  const parsed = presenterSetupSchema.safeParse({
+    companyName: String(formData.get("company_name") ?? ""),
+    domainPrefix: String(formData.get("domain_prefix") ?? ""),
+    shortBio: String(formData.get("short_bio") ?? ""),
+    yearsExperience: String(formData.get("years_experience") ?? ""),
+    familiesHelped: String(formData.get("families_helped") ?? ""),
+    totalLoanVolume: String(formData.get("total_loan_volume") ?? ""),
+    specialtyFocus: String(formData.get("specialty_focus") ?? ""),
+    licenseStates: String(formData.get("license_states") ?? ""),
+    reviews: parseReviewsFromFormData(formData),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check your presenter setup." };
+  }
+
+  const imageFile = getProfileImageFile(formData);
+  const imageResult = imageFile ? await uploadPresenterImage(userId, imageFile) : null;
+  if (imageResult && "error" in imageResult) {
+    return { error: imageResult.error };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Server is missing the Supabase service role key." };
+  }
+
+  const profileUpdate: {
+    id: string;
+    company_name: string | null;
+    domain_prefix: string | null;
+    short_bio: string | null;
+    years_experience: number | null;
+    families_helped: number | null;
+    total_loan_volume: string | null;
+    specialty_focus: string | null;
+    license_states: string | null;
+    profile_image_url?: string;
+  } = {
+    id: userId,
+    company_name: optionalText(parsed.data.companyName),
+    domain_prefix: parsed.data.domainPrefix,
+    short_bio: optionalText(parsed.data.shortBio),
+    years_experience: parsed.data.yearsExperience,
+    families_helped: parsed.data.familiesHelped,
+    total_loan_volume: optionalText(parsed.data.totalLoanVolume),
+    specialty_focus: optionalText(parsed.data.specialtyFocus),
+    license_states: optionalText(parsed.data.licenseStates),
+  };
+
+  if (imageResult && "publicUrl" in imageResult) {
+    profileUpdate.profile_image_url = imageResult.publicUrl;
+  }
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .upsert(profileUpdate, { onConflict: "id" });
+
+  if (profileError) {
+    return { error: profileError.message };
+  }
+
+  const reviewsToSave = completedReviews(parsed.data.reviews);
+  const filledOrders = reviewsToSave.map((_, index) => index + 1);
+
+  if (reviewsToSave.length > 0) {
+    const { error: upsertError } = await admin.from("testimonials").upsert(
+      reviewsToSave.map((review, index) => ({
+        user_id: userId,
+        reviewer_name: review.reviewerName,
+        reviewer_context: optionalText(review.reviewerContext),
+        review_text: review.reviewText,
+        rating: review.rating === "" ? 5 : review.rating,
+        display_order: index + 1,
+      })),
+      { onConflict: "user_id,display_order" },
+    );
+
+    if (upsertError) {
+      return { error: upsertError.message };
+    }
+  }
+
+  const deleteQuery = admin.from("testimonials").delete().eq("user_id", userId);
+  const { error: deleteError } =
+    filledOrders.length > 0
+      ? await deleteQuery.not("display_order", "in", `(${filledOrders.join(",")})`)
+      : await deleteQuery;
+
+  if (deleteError) {
+    return { error: deleteError.message };
+  }
+
+  return { ok: true as const };
 }
 
 export async function createWebinar(formData: FormData) {
@@ -28,19 +252,19 @@ export async function createWebinar(formData: FormData) {
   const parsed = webinarFormSchema.safeParse({
     template_type: String(formData.get("template_type") ?? ""),
     title,
-    description: String(formData.get("description") ?? "").trim() || undefined,
+    description: String(formData.get("description") ?? "").trim(),
     starts_at: String(formData.get("starts_at") ?? ""),
     timezone: String(formData.get("timezone") ?? ""),
     host_name: String(formData.get("host_name") ?? "").trim(),
     cta_text: String(formData.get("cta_text") ?? "").trim() || undefined,
     join_url: String(formData.get("join_url") ?? "").trim(),
     headline: String(formData.get("headline") ?? "").trim(),
-    subheadline: String(formData.get("subheadline") ?? "").trim() || undefined,
+    subheadline: String(formData.get("subheadline") ?? "").trim(),
     hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? "").trim(),
     hero_image_url: "",
-    slug: rawSlug || undefined,
+    slug: rawSlug,
   });
 
   if (!parsed.success) {
@@ -54,7 +278,23 @@ export async function createWebinar(formData: FormData) {
 
   revalidatePath("/webinars");
   revalidatePath("/dashboard");
-  redirect(`/webinars/${result.webinarId}`);
+  redirect("/webinars");
+}
+
+export async function completePresenterSetup(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const result = await savePresenterSetup(user.id, formData);
+  if ("error" in result) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/webinars/new");
+  redirect("/webinars/new?setup=done");
 }
 
 export async function updateWebinarContent(formData: FormData) {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const features = [
   {
@@ -66,7 +67,23 @@ const faqs = [
   },
 ];
 
-export default function MarketingHomePage() {
+export default function MarketingHomePage({
+  searchParams,
+}: {
+  searchParams?: { code?: string; error?: string; error_code?: string };
+}) {
+  if (searchParams?.code) {
+    redirect(`/auth/callback?code=${encodeURIComponent(searchParams.code)}&next=/reset-password`);
+  }
+
+  if (searchParams?.error || searchParams?.error_code) {
+    redirect(
+      searchParams.error_code === "otp_expired"
+        ? "/forgot-password?error=expired"
+        : "/forgot-password?error=auth",
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
