@@ -165,6 +165,21 @@ async function uploadPresenterImage(userId: string, file: File) {
   return { publicUrl: data.publicUrl };
 }
 
+async function revalidatePublicWebinarPage(webinarId: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+
+  const { data } = await admin
+    .from("webinar_pages")
+    .select("slug")
+    .eq("webinar_id", webinarId)
+    .maybeSingle();
+
+  if (data?.slug) {
+    revalidatePath(`/w/${data.slug}`);
+  }
+}
+
 async function savePresenterSetup(userId: string, formData: FormData) {
   const parsed = presenterSetupSchema.safeParse({
     companyName: String(formData.get("company_name") ?? ""),
@@ -356,6 +371,7 @@ export async function updateWebinarContent(formData: FormData) {
   }
 
   revalidatePath(`/webinars/${webinarId}`);
+  await revalidatePublicWebinarPage(webinarId);
   revalidatePath("/webinars");
   return { ok: true };
 }
@@ -407,6 +423,7 @@ export async function updateWebinarDetails(formData: FormData) {
 
   revalidatePath(`/webinars/${parsed.data.webinar_id}`);
   revalidatePath(`/webinars/${parsed.data.webinar_id}/edit`);
+  await revalidatePublicWebinarPage(parsed.data.webinar_id);
   revalidatePath("/webinars");
   return { ok: true as const };
 }

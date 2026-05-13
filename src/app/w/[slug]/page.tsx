@@ -14,6 +14,9 @@ import { WEBINAR_BASE_DOMAIN } from "@/domain/profiles";
 import { formatInTimeZone } from "@/lib/timezone-utils";
 import { getWebinarTemplate } from "@/lib/webinarTemplates";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function PublicWebinarPage({ params }: { params: { slug: string } }) {
   const res = await getPublicWebinarLanding(params.slug);
   if ("error" in res) {
