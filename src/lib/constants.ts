@@ -4,6 +4,7 @@ export {
 } from "@/domain/leads";
 export {
   REMINDER_LABELS,
+  REMINDER_TEMPLATE_DISPLAY_ORDER,
   REMINDER_TEMPLATE_KEYS,
 } from "@/domain/reminders";
 

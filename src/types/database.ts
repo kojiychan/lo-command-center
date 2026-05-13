@@ -74,6 +74,7 @@ export type WebinarPage = {
   agenda_items: string[];
   button_text: string;
   hero_image_url: string | null;
+  meta_pixel_id: string | null;
   created_at: string;
   updated_at: string;
 };

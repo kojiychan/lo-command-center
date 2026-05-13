@@ -28,6 +28,7 @@ export type PublicWebinarLanding = {
   subheadline: string | null;
   button_text: string;
   hero_image_url: string | null;
+  meta_pixel_id: string | null;
   hero_bullets: string[];
   agenda_items: string[];
   presenter: PublicPresenter | null;
@@ -68,6 +69,7 @@ export async function getPublicWebinarLanding(
       subheadline,
       button_text,
       hero_image_url,
+      meta_pixel_id,
       hero_bullets,
       agenda_items,
       webinars (
@@ -137,6 +139,7 @@ export async function getPublicWebinarLanding(
       subheadline: data.subheadline,
       button_text: data.button_text,
       hero_image_url: data.hero_image_url,
+      meta_pixel_id: data.meta_pixel_id,
       hero_bullets: normalizeStringArray(data.hero_bullets),
       agenda_items: normalizeStringArray(data.agenda_items),
       presenter: profile ?? null,

@@ -55,6 +55,7 @@ export default async function WebinarsPage() {
                   <th className="pb-2 pr-4 font-medium">Views</th>
                   <th className="pb-2 pr-4 font-medium">Sign ups</th>
                   <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 pl-4 text-right font-medium">Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -98,6 +99,28 @@ export default async function WebinarsPage() {
                         <Badge tone={upcoming ? "success" : "neutral"}>
                           {upcoming ? "Upcoming" : "Past"}
                         </Badge>
+                      </td>
+                      <td className="py-3 pl-4 text-right">
+                        <Link
+                          href={`/webinars/${w.id}/edit`}
+                          aria-label={`Edit ${w.title}`}
+                          title={`Edit ${w.title}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
+                        </Link>
                       </td>
                     </tr>
                   );

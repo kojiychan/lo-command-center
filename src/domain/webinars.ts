@@ -18,6 +18,12 @@ export const webinarFormSchema = z.object({
   agenda_items: z.array(z.string().min(1)).min(1),
   button_text: z.string().min(2),
   hero_image_url: z.union([z.string().url(), z.literal("")]).optional(),
+  meta_pixel_id: z
+    .union([
+      z.string().trim().regex(/^\d{5,30}$/, "Meta Pixel ID should be 5-30 digits."),
+      z.literal(""),
+    ])
+    .optional(),
   slug: z.string().min(1),
 });
 

@@ -73,6 +73,27 @@ const presenterSetupSchema = z.object({
   });
 });
 
+const webinarEditSchema = z.object({
+  webinar_id: z.string().uuid(),
+  title: z.string().trim().min(3, "Webinar title is required."),
+  description: z.string().trim().min(3, "Description is required."),
+  starts_at: z.string().trim().min(1, "Date and time are required."),
+  timezone: z.string().trim().min(1, "Timezone is required."),
+  join_url: z.string().trim().url("Join link must be a valid URL."),
+  cta_text: z.string().trim().optional(),
+  headline: z.string().trim().min(3, "Headline is required."),
+  subheadline: z.string().trim().min(3, "Subheadline is required."),
+  hero_bullets: z.array(z.string().min(1)).min(1, "Hero bullet points are required."),
+  agenda_items: z.array(z.string().min(1)).min(1, "Agenda is required."),
+  button_text: z.string().trim().min(2, "Button text is required."),
+  meta_pixel_id: z
+    .union([
+      z.string().trim().regex(/^\d{5,30}$/, "Meta Pixel ID should be 5-30 digits."),
+      z.literal(""),
+    ])
+    .optional(),
+});
+
 function optionalText(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text.length > 0 ? text : null;
@@ -263,6 +284,7 @@ export async function createWebinar(formData: FormData) {
     hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? "").trim(),
+    meta_pixel_id: String(formData.get("meta_pixel_id") ?? "").trim(),
     hero_image_url: "",
     slug: rawSlug,
   });
@@ -312,7 +334,7 @@ export async function updateWebinarContent(formData: FormData) {
     return { error: "Title, headline, and button text are required." };
   }
 
-  const result = await updateWebinarContentForUser(user.id, webinarId, {
+  const contentUpdate = {
     title,
     description: String(formData.get("description") ?? "").trim() || null,
     ctaText: String(formData.get("cta_text") ?? "").trim() || null,
@@ -321,7 +343,12 @@ export async function updateWebinarContent(formData: FormData) {
     heroBullets: linesFromFormValue(formData.get("hero_bullets")),
     agendaItems: linesFromFormValue(formData.get("agenda_items")),
     buttonText,
-  });
+    ...(formData.has("meta_pixel_id")
+      ? { metaPixelId: String(formData.get("meta_pixel_id") ?? "").trim() || null }
+      : {}),
+  };
+
+  const result = await updateWebinarContentForUser(user.id, webinarId, contentUpdate);
 
   if ("error" in result) {
     return { error: result.error };
@@ -330,4 +357,55 @@ export async function updateWebinarContent(formData: FormData) {
   revalidatePath(`/webinars/${webinarId}`);
   revalidatePath("/webinars");
   return { ok: true };
+}
+
+export async function updateWebinarDetails(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const parsed = webinarEditSchema.safeParse({
+    webinar_id: String(formData.get("webinar_id") ?? ""),
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    starts_at: String(formData.get("starts_at") ?? ""),
+    timezone: String(formData.get("timezone") ?? ""),
+    join_url: String(formData.get("join_url") ?? ""),
+    cta_text: String(formData.get("cta_text") ?? ""),
+    headline: String(formData.get("headline") ?? ""),
+    subheadline: String(formData.get("subheadline") ?? ""),
+    hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
+    agenda_items: linesFromFormValue(formData.get("agenda_items")),
+    button_text: String(formData.get("button_text") ?? ""),
+    meta_pixel_id: String(formData.get("meta_pixel_id") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the webinar details." };
+  }
+
+  const result = await updateWebinarContentForUser(user.id, parsed.data.webinar_id, {
+    title: parsed.data.title,
+    description: parsed.data.description,
+    startsAt: parsed.data.starts_at,
+    timezone: parsed.data.timezone,
+    joinUrl: parsed.data.join_url,
+    ctaText: parsed.data.cta_text || null,
+    headline: parsed.data.headline,
+    subheadline: parsed.data.subheadline,
+    heroBullets: parsed.data.hero_bullets,
+    agendaItems: parsed.data.agenda_items,
+    buttonText: parsed.data.button_text,
+    metaPixelId: parsed.data.meta_pixel_id || null,
+  });
+
+  if ("error" in result) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/webinars/${parsed.data.webinar_id}`);
+  revalidatePath(`/webinars/${parsed.data.webinar_id}/edit`);
+  revalidatePath("/webinars");
+  return { ok: true as const };
 }

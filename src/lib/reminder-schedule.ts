@@ -12,6 +12,8 @@ export type ScheduledReminder = {
  *
  * Rules:
  * - All scheduling is computed in the webinar timezone, then converted to UTC.
+ * - confirmation is immediate.
+ * - Every other reminder is skipped if its send time has already passed.
  * - day_before = exactly 24 hours before start (skip if within 24 hours).
  * - morning_of = 9:00 AM local webinar time.
  *
@@ -30,24 +32,24 @@ export function buildDefaultReminderSchedule(
 
   const schedule: ScheduledReminder[] = [{ template_key: "confirmation", scheduled_for: nowUtc }];
 
-  // day_before = exactly 24 hours before start
-  const dayBeforeUtc = subDays(startUtc, 1);
-  if (dayBeforeUtc.getTime() - nowUtc.getTime() > 0) {
-    schedule.push({ template_key: "day_before", scheduled_for: dayBeforeUtc });
+  function addFutureReminder(template_key: ReminderTemplateKey, scheduled_for: Date) {
+    if (scheduled_for.getTime() > nowUtc.getTime()) {
+      schedule.push({ template_key, scheduled_for });
+    }
   }
+
+  // day_before = exactly 24 hours before start
+  addFutureReminder("day_before", subDays(startUtc, 1));
 
   // morning_of (9am local webinar time). If webinar is before 9am, morning_of could be after start — skip it then.
-  if (morningUtc.getTime() < startUtc.getTime() && morningUtc.getTime() - nowUtc.getTime() > 0) {
-    schedule.push({ template_key: "morning_of", scheduled_for: morningUtc });
+  if (morningUtc.getTime() < startUtc.getTime()) {
+    addFutureReminder("morning_of", morningUtc);
   }
 
-  schedule.push({ template_key: "one_hour", scheduled_for: subHours(startUtc, 1) });
-  schedule.push({ template_key: "ten_min", scheduled_for: subMinutes(startUtc, 10) });
-  schedule.push({ template_key: "started", scheduled_for: startUtc });
-  schedule.push({
-    template_key: "post_followup",
-    scheduled_for: addMinutes(addHours(startUtc, 1), 5),
-  });
+  addFutureReminder("one_hour", subHours(startUtc, 1));
+  addFutureReminder("ten_min", subMinutes(startUtc, 10));
+  addFutureReminder("started", startUtc);
+  addFutureReminder("post_followup", addMinutes(addHours(startUtc, 1), 5));
 
   return schedule;
 }

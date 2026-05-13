@@ -7,6 +7,7 @@ import {
 } from "@/server/public-webinar";
 import { RegisterForm } from "@/components/public/register-form";
 import { WebinarViewTracker } from "@/components/analytics/webinar-view-tracker";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { CountdownTimer } from "@/components/public/countdown-timer";
 import { WebinarTime } from "@/components/public/webinar-time";
 import { WEBINAR_BASE_DOMAIN } from "@/domain/profiles";
@@ -33,6 +34,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      <MetaPixel pixelId={data.meta_pixel_id} />
       <WebinarViewTracker webinarId={w.id} slug={data.slug} />
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -103,7 +105,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                 </div>
 
                 <div className="mt-5">
-                  <RegisterForm slug={data.slug} ctaLabel={data.button_text || template.defaultCTA} />
+                  <RegisterForm
+                    slug={data.slug}
+                    ctaLabel={data.button_text || template.defaultCTA}
+                    metaPixelId={data.meta_pixel_id}
+                  />
                 </div>
 
                 <p className="mt-4 text-[11px] leading-relaxed text-slate-500">

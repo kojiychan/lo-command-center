@@ -1,12 +1,42 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { registerForWebinar, type RegisterState } from "@/app/actions/register";
+import { trackMetaLead } from "@/components/analytics/meta-pixel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUserTimezone } from "@/hooks/use-user-timezone";
 
 const initialState: RegisterState = { status: "idle" };
+const defaultWebinarDurationMinutes = 60;
+
+function calendarDate(value: Date) {
+  return value.toISOString().replace(/[-:]|\.\d{3}/g, "");
+}
+
+function calendarLinks({
+  title,
+  startsAt,
+  joinUrl,
+}: {
+  title: string;
+  startsAt: string;
+  joinUrl: string;
+}) {
+  const start = new Date(startsAt);
+  const end = new Date(start.getTime() + defaultWebinarDurationMinutes * 60 * 1000);
+  const details = `Join link: ${joinUrl}`;
+  const encodedTitle = encodeURIComponent(title);
+  const encodedDetails = encodeURIComponent(details);
+  const encodedJoinUrl = encodeURIComponent(joinUrl);
+  const dates = `${calendarDate(start)}/${calendarDate(end)}`;
+
+  return {
+    google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&dates=${dates}&details=${encodedDetails}&location=${encodedJoinUrl}`,
+    outlook: `https://outlook.live.com/calendar/0/action/compose?path=/calendar/action/compose&rru=addevent&subject=${encodedTitle}&startdt=${encodeURIComponent(start.toISOString())}&enddt=${encodeURIComponent(end.toISOString())}&body=${encodedDetails}&location=${encodedJoinUrl}`,
+  };
+}
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -20,33 +50,61 @@ function Submit({ label }: { label: string }) {
 export function RegisterForm({
   slug,
   ctaLabel,
+  metaPixelId,
 }: {
   slug: string;
   ctaLabel: string;
+  metaPixelId: string | null;
 }) {
   const [state, formAction] = useFormState(registerForWebinar, initialState);
   const userTz = useUserTimezone();
+  const trackedLeadId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.status !== "success" || trackedLeadId.current === state.leadId) {
+      return;
+    }
+
+    trackedLeadId.current = state.leadId;
+    trackMetaLead(metaPixelId, state.leadId, state.webinarTitle);
+  }, [metaPixelId, state]);
 
   if (state.status === "success") {
+    const links = calendarLinks({
+      title: state.webinarTitle,
+      startsAt: state.startsAt,
+      joinUrl: state.joinUrl,
+    });
+
     return (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm">
         <div className="text-base font-semibold text-slate-900">
           You’re registered
         </div>
         <p className="mt-2 text-sm text-slate-700">
-          You’ll get short reminders leading up to start time. Save the join link
-          now.
+          You’ll get short reminders leading up to start time. Add it to your
+          calendar now so the join link is saved.
         </p>
-        <a
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-          href={state.joinUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Join the webinar
-        </a>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <a
+            className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            href={links.google}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Add to Google
+          </a>
+          <a
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+            href={links.outlook}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Add to Outlook
+          </a>
+        </div>
         <p className="mt-3 text-xs text-slate-600">
-          If the button doesn’t work, copy/paste this URL into your browser:{" "}
+          Your calendar event includes this join URL:{" "}
           <span className="break-all font-mono text-slate-700">
             {state.joinUrl}
           </span>

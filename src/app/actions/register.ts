@@ -18,7 +18,14 @@ const registrationSchema = z.object({
 export type RegisterState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success"; joinUrl: string };
+  | {
+      status: "success";
+      joinUrl: string;
+      leadId: string;
+      webinarTitle: string;
+      startsAt: string;
+      timezone: string;
+    };
 
 export async function registerForWebinar(
   _prev: RegisterState,
@@ -58,7 +65,7 @@ export async function registerForWebinar(
 
   const { data: webinar, error: webinarError } = await admin
     .from("webinars")
-    .select("join_url, starts_at, timezone")
+    .select("title, join_url, starts_at, timezone")
     .eq("id", page.webinar_id)
     .maybeSingle();
 
@@ -187,5 +194,12 @@ export async function registerForWebinar(
     }
   }
 
-  return { status: "success", joinUrl: webinar.join_url };
+  return {
+    status: "success",
+    joinUrl: webinar.join_url,
+    leadId: inserted.id,
+    webinarTitle: webinar.title,
+    startsAt: webinar.starts_at,
+    timezone: webinar.timezone,
+  };
 }

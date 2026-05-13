@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { REMINDER_LABELS } from "@/lib/constants";
+import { REMINDER_LABELS, REMINDER_TEMPLATE_DISPLAY_ORDER } from "@/lib/constants";
 import {
   DomainSettingsForm,
   EmailSettingsForm,
@@ -50,6 +50,11 @@ export default async function SettingsPage() {
     .eq("user_id", user.id)
     .order("display_order", { ascending: true })
     .limit(3);
+  const sortedTemplates = ((templates ?? []) as ReminderTemplate[]).sort(
+    (a, b) =>
+      REMINDER_TEMPLATE_DISPLAY_ORDER.indexOf(a.template_key) -
+      REMINDER_TEMPLATE_DISPLAY_ORDER.indexOf(b.template_key),
+  );
 
   return (
     <div className="space-y-8">
@@ -124,13 +129,13 @@ export default async function SettingsPage() {
         />
 
         <div className="space-y-6">
-          {(templates ?? []).length === 0 ? (
+          {sortedTemplates.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
               No defaults found yet. They’re created automatically after sign-in; refresh if you just created your
               account.
             </div>
           ) : (
-            (templates as ReminderTemplate[]).map((t) => (
+            sortedTemplates.map((t) => (
               <form
                 key={t.id}
                 action={updateUserReminderTemplate}

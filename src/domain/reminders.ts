@@ -14,6 +14,20 @@ export const REMINDER_TEMPLATE_KEYS = [
   "closed_client_onboarding",
 ] as const;
 
+export const REMINDER_TEMPLATE_DISPLAY_ORDER = [
+  "confirmation",
+  "day_before",
+  "morning_of",
+  "one_hour",
+  "ten_min",
+  "started",
+  "attended_cta",
+  "no_show_one_on_one",
+  "booked_call_prep",
+  "closed_client_onboarding",
+  "post_followup",
+] as const satisfies readonly (typeof REMINDER_TEMPLATE_KEYS)[number][];
+
 export const REMINDER_CHANNELS = ["email", "sms"] as const;
 
 export const REMINDER_EVENT_STATUSES = [
@@ -34,7 +48,7 @@ export type ReminderEventStatus = z.infer<typeof reminderEventStatusSchema>;
 
 export const REMINDER_LABELS: Record<ReminderTemplateKey, string> = {
   confirmation: "Immediate confirmation",
-  day_before: "24 hours before (day before)",
+  day_before: "Day-before reminder",
   morning_of: "Morning of webinar",
   one_hour: "1 hour before",
   ten_min: "10 minutes before",

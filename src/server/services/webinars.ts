@@ -8,12 +8,16 @@ import type { WebinarFormInput } from "@/domain/webinars";
 export type WebinarContentUpdateInput = {
   title: string;
   description: string | null;
+  startsAt?: string;
+  timezone?: string;
+  joinUrl?: string;
   ctaText: string | null;
   headline: string;
   subheadline: string | null;
   heroBullets: string[];
   agendaItems: string[];
   buttonText: string;
+  metaPixelId?: string | null;
 };
 
 export async function createWebinarForUser(userId: string, input: WebinarFormInput) {
@@ -52,6 +56,7 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
     hero_bullets: input.hero_bullets,
     agenda_items: input.agenda_items,
     button_text: input.button_text,
+    meta_pixel_id: input.meta_pixel_id || null,
     hero_image_url:
       input.hero_image_url && input.hero_image_url.length > 0
         ? input.hero_image_url
@@ -113,6 +118,9 @@ export async function updateWebinarContentForUser(
     .update({
       title: input.title,
       description: input.description,
+      ...(input.startsAt ? { starts_at: input.startsAt } : {}),
+      ...(input.timezone ? { timezone: input.timezone } : {}),
+      ...(input.joinUrl ? { join_url: input.joinUrl } : {}),
       cta_text: input.ctaText,
     })
     .eq("id", webinarId);
@@ -129,6 +137,7 @@ export async function updateWebinarContentForUser(
       hero_bullets: input.heroBullets,
       agenda_items: input.agendaItems,
       button_text: input.buttonText,
+      ...(typeof input.metaPixelId !== "undefined" ? { meta_pixel_id: input.metaPixelId } : {}),
     })
     .eq("webinar_id", webinarId);
 
