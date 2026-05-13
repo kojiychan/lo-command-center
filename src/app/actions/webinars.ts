@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { optionalDomainPrefixSchema } from "@/domain/profiles";
 import { webinarFormSchema } from "@/domain/webinars";
+import { extractMetaPixelId } from "@/lib/meta-pixel";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/server/auth/current-user";
 import {
@@ -284,7 +285,7 @@ export async function createWebinar(formData: FormData) {
     hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? "").trim(),
-    meta_pixel_id: String(formData.get("meta_pixel_id") ?? "").trim(),
+    meta_pixel_id: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")),
     hero_image_url: "",
     slug: rawSlug,
   });
@@ -344,7 +345,7 @@ export async function updateWebinarContent(formData: FormData) {
     agendaItems: linesFromFormValue(formData.get("agenda_items")),
     buttonText,
     ...(formData.has("meta_pixel_id")
-      ? { metaPixelId: String(formData.get("meta_pixel_id") ?? "").trim() || null }
+      ? { metaPixelId: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")) || null }
       : {}),
   };
 
@@ -378,7 +379,7 @@ export async function updateWebinarDetails(formData: FormData) {
     hero_bullets: linesFromFormValue(formData.get("hero_bullets")),
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? ""),
-    meta_pixel_id: String(formData.get("meta_pixel_id") ?? ""),
+    meta_pixel_id: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")),
   });
 
   if (!parsed.success) {

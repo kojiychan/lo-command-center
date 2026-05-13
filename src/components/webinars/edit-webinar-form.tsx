@@ -11,6 +11,7 @@ import {
   buildTimezoneOptions,
   localDateTimeInTimeZoneToUtc,
 } from "@/lib/timezone-utils";
+import { extractMetaPixelId } from "@/lib/meta-pixel";
 import type { Webinar, WebinarPage } from "@/types/database";
 
 type EditWebinarFormProps = {
@@ -237,6 +238,17 @@ export function EditWebinarForm({ webinar, page }: EditWebinarFormProps) {
             pattern="[0-9]{5,30}"
             placeholder="123456789012345"
             defaultValue={page.meta_pixel_id ?? ""}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              const extracted = extractMetaPixelId(pasted);
+              if (extracted !== pasted) {
+                event.preventDefault();
+                event.currentTarget.value = extracted;
+              }
+            }}
+            onBlur={(event) => {
+              event.currentTarget.value = extractMetaPixelId(event.currentTarget.value);
+            }}
             hint="Optional. Tracks landing page views and webinar registrations for Meta ads."
           />
         </div>
