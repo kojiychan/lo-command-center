@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -16,6 +17,41 @@ import { getWebinarTemplate } from "@/lib/webinarTemplates";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const result = await getPublicWebinarLanding(params.slug);
+
+  if ("error" in result) {
+    return {
+      title: { absolute: "Real Estate Seminar" },
+    };
+  }
+
+  const webinarTitle = result.data.webinar.title;
+  const description =
+    result.data.subheadline ??
+    result.data.webinar.description ??
+    `Register for ${webinarTitle}.`;
+
+  return {
+    title: { absolute: "Real Estate Seminar" },
+    description,
+    openGraph: {
+      title: "Real Estate Seminar",
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: "Real Estate Seminar",
+      description,
+    },
+  };
+}
 
 export default async function PublicWebinarPage({ params }: { params: { slug: string } }) {
   const res = await getPublicWebinarLanding(params.slug);
