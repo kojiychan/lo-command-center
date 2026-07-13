@@ -63,7 +63,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
   const w = data.webinar;
   const template = getWebinarTemplate(w.template_type);
   const heroBullets = data.hero_bullets.length > 0 ? data.hero_bullets : template.defaultHeroBullets;
-  const agendaItems = data.agenda_items.length > 0 ? data.agenda_items : template.defaultAgenda;
+  const agendaCards = getLandingAgendaCards({
+    templateType: w.template_type,
+    agendaItems: data.agenda_items.length > 0 ? data.agenda_items : template.defaultAgenda,
+    agendaBodies: template.defaultAgendaBodies,
+  });
   const presenterName = data.presenter?.full_name ?? w.host_name;
 
   enforcePresenterSubdomain({
@@ -173,11 +177,11 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {agendaItems.map((item, index) => (
+          {agendaCards.map((item, index) => (
             <BenefitCard
-              key={item}
-              title={item}
-              body="Clear, practical guidance you can use after the session."
+              key={item.title}
+              title={item.title}
+              body={item.body}
               icon={String(index + 1)}
             />
           ))}
@@ -333,6 +337,50 @@ function enforcePresenterSubdomain({
 
 function isLocalHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function getLandingAgendaCards({
+  templateType,
+  agendaItems,
+  agendaBodies,
+}: {
+  templateType: string;
+  agendaItems: string[];
+  agendaBodies: string[];
+}) {
+  if (templateType === "self_employed") {
+    return [
+      {
+        title: "Why Self-Employed Loans Are Different",
+        body: "Understand how lenders view business owners and why qualifying is different.",
+      },
+      {
+        title: "Tax Returns vs. Bank Statement Loans",
+        body: "Learn which program may help you qualify for a larger mortgage.",
+      },
+      {
+        title: "Common Documentation Mistakes",
+        body: "Avoid delays by knowing exactly what underwriters look for.",
+      },
+      {
+        title: "Non-QM Loan Options",
+        body: "Explore alternatives when conventional financing isn't the best fit.",
+      },
+      {
+        title: "How to Prepare Before Applying",
+        body: "Get organized before you apply to improve your approval odds.",
+      },
+      {
+        title: "Live Q&A",
+        body: "Ask questions about your situation and get answers from a mortgage expert.",
+      },
+    ];
+  }
+
+  return agendaItems.map((title, index) => ({
+    title,
+    body: agendaBodies[index] ?? "Clear, practical guidance you can use after the session.",
+  }));
 }
 
 function InfoPill({

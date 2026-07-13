@@ -22,6 +22,7 @@ export type WebinarTemplateConfig = {
   defaultSubheadline: string;
   defaultHeroBullets: string[];
   defaultAgenda: string[];
+  defaultAgendaBodies: string[];
   defaultPresenterSectionPrompt: string;
   defaultCTA: string;
   defaultReminderEmailSubject: string;
@@ -72,6 +73,14 @@ export const WEBINAR_TEMPLATES: Record<WebinarTemplateId, WebinarTemplateConfig>
       "The pre-approval process",
       "How to make a strong offer",
       "Live Q&A",
+    ],
+    defaultAgendaBodies: [
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
     ],
     defaultPresenterSectionPrompt:
       "Introduce your experience helping first-time buyers understand affordability, assistance programs, and pre-approval.",
@@ -159,6 +168,14 @@ export const WEBINAR_TEMPLATES: Record<WebinarTemplateId, WebinarTemplateConfig>
       "Common investor mistakes",
       "Live Q&A",
     ],
+    defaultAgendaBodies: [
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+      "Clear, practical guidance you can use after the session.",
+    ],
     defaultPresenterSectionPrompt:
       "Introduce your experience helping buyers evaluate investor financing, rental income, and loan strategy.",
     defaultCTA: "Save My Seat",
@@ -245,6 +262,14 @@ export const WEBINAR_TEMPLATES: Record<WebinarTemplateId, WebinarTemplateConfig>
       "Non-QM loan options",
       "How to prepare before applying",
       "Live Q&A",
+    ],
+    defaultAgendaBodies: [
+      "Understand how lenders view business owners and why qualifying is different.",
+      "Learn which program may help you qualify for a larger mortgage.",
+      "Avoid delays by knowing exactly what underwriters look for.",
+      "Explore alternatives when conventional financing isn't the best fit.",
+      "Get organized before you apply to improve your approval odds.",
+      "Ask questions about your situation and get answers from a mortgage expert.",
     ],
     defaultPresenterSectionPrompt:
       "Introduce your experience helping self-employed borrowers understand income documentation and loan options.",
