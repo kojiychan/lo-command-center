@@ -169,12 +169,12 @@ export const WEBINAR_TEMPLATES: Record<WebinarTemplateId, WebinarTemplateConfig>
       "Live Q&A",
     ],
     defaultAgendaBodies: [
-      "Clear, practical guidance you can use after the session.",
-      "Clear, practical guidance you can use after the session.",
-      "Clear, practical guidance you can use after the session.",
-      "Clear, practical guidance you can use after the session.",
-      "Clear, practical guidance you can use after the session.",
-      "Clear, practical guidance you can use after the session.",
+      "Compare conventional, DSCR, and other financing paths for rental property purchases.",
+      "Understand how income, expenses, and long-term upside shape an investment strategy.",
+      "Learn how debt-service coverage works and when it can help investors qualify.",
+      "See how expected rent may support the loan scenario before you buy.",
+      "Avoid financing surprises that can slow down or weaken a deal.",
+      "Ask questions about your investment goals and get answers from a mortgage expert.",
     ],
     defaultPresenterSectionPrompt:
       "Introduce your experience helping buyers evaluate investor financing, rental income, and loan strategy.",
