@@ -41,6 +41,10 @@ const sharedConfirmationBody = `Hi {{first_name}},
 
 You're registered for "{{title}}" with {{host}}.
 
+Date: {{date}}
+Time: {{time_only}}
+Timezone: {{timezone}}
+
 We'll send a few short reminders so you don't miss it. Bring your questions and anything you're unsure about.
 
 Join link: {{join_link}}

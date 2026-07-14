@@ -11,6 +11,9 @@ import {
 import { updateUserReminderTemplate } from "@/app/actions/templates";
 import type { ReminderTemplate } from "@/types/database";
 
+const REMINDER_PLACEHOLDER_HINT =
+  "Placeholders: {{first_name}}, {{title}}, {{date}}, {{time_only}}, {{timezone}}, {{time}}, {{join_link}}, {{host}}, {{company_name}}, {{presenter_email}}, {{book_call_link}}";
+
 export default async function SettingsPage() {
   const supabase = await createClient();
   const {
@@ -160,6 +163,8 @@ export default async function SettingsPage() {
                     </label>
                   </div>
                 </div>
+
+                <p className="mt-3 text-xs text-slate-500">{REMINDER_PLACEHOLDER_HINT}</p>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <label className="block space-y-1.5">

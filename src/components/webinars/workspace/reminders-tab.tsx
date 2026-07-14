@@ -6,6 +6,9 @@ import { REMINDER_LABELS } from "@/lib/constants";
 import { updateWebinarReminderTemplate } from "@/app/actions/templates";
 import type { ReminderEvent, ReminderTemplate, ReminderTemplateKey } from "@/types/database";
 
+const PLACEHOLDER_HINT =
+  "Placeholders: {{first_name}}, {{title}}, {{date}}, {{time_only}}, {{timezone}}, {{time}}, {{join_link}}, {{host}}, {{company_name}}, {{presenter_email}}, {{book_call_link}}";
+
 export function RemindersTab({
   webinarId,
   templates,
@@ -20,8 +23,7 @@ export function RemindersTab({
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Reminder templates (per webinar)</h2>
         <p className="mt-1 text-sm text-slate-600">
-          These are the messages your registrants would receive. Sending is mocked for now — this is where you tune
-          conversion copy.
+          These are the messages your registrants receive. This is where you tune conversion copy.
         </p>
         <div className="mt-6 space-y-6">
           {templates.map((t) => (
@@ -50,6 +52,7 @@ export function RemindersTab({
                   </label>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-slate-500">{PLACEHOLDER_HINT}</p>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">

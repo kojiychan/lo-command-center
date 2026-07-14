@@ -14,6 +14,9 @@ type SmsContext = {
   lead_first_name: string;
   webinar_title: string;
   webinar_datetime: string;
+  webinar_date: string;
+  webinar_time: string;
+  webinar_timezone: string;
   join_url: string;
   presenter_name: string;
   company_name: string;
@@ -254,6 +257,10 @@ export function renderSmsTemplate(template: string, context: SmsContext) {
     .replaceAll("{{webinar_datetime}}", context.webinar_datetime)
     .replaceAll("{{time}}", context.webinar_datetime)
     .replaceAll("{{user_local_time}}", context.webinar_datetime)
+    .replaceAll("{{date}}", context.webinar_date)
+    .replaceAll("{{time_only}}", context.webinar_time)
+    .replaceAll("{{webinar_timezone}}", context.webinar_timezone)
+    .replaceAll("{{timezone}}", context.webinar_timezone)
     .replaceAll("{{join_url}}", context.join_url)
     .replaceAll("{{join_link}}", context.join_url)
     .replaceAll("{{presenter_name}}", context.presenter_name)
@@ -324,10 +331,27 @@ export async function sendTemplateSms(input: {
     .eq("id", webinar.user_id)
     .maybeSingle();
 
+  const webinarDate = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: webinar.timezone,
+  }).format(new Date(webinar.starts_at));
+  const webinarTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+    timeZone: webinar.timezone,
+  }).format(new Date(webinar.starts_at));
+
   const body = renderSmsTemplate(template.sms_body, {
     lead_first_name: data.first_name,
     webinar_title: webinar.title,
     webinar_datetime: formatInTimeZone(webinar.starts_at, webinar.timezone),
+    webinar_date: webinarDate,
+    webinar_time: webinarTime,
+    webinar_timezone: webinar.timezone,
     join_url: webinar.join_url,
     presenter_name: webinar.host_name,
     company_name: profile?.company_name ?? "",

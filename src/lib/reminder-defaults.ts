@@ -10,8 +10,8 @@ export type TemplateSeed = {
 };
 
 /**
- * Mortgage-LO tuned defaults. `{{first_name}}`, `{{host}}`, `{{title}}`, `{{time}}`, `{{join_link}}`
- * are replaced in the mock sender / future integration layer.
+ * Mortgage-LO tuned defaults. `{{first_name}}`, `{{host}}`, `{{title}}`, `{{time}}`, `{{date}}`,
+ * `{{time_only}}`, `{{timezone}}`, and `{{join_link}}` are replaced in the sending layer.
  */
 export const DEFAULT_REMINDER_TEMPLATES: TemplateSeed[] = [
   {
@@ -20,6 +20,10 @@ export const DEFAULT_REMINDER_TEMPLATES: TemplateSeed[] = [
     email_body: `Hi {{first_name}},
 
 Thanks for reserving a seat for "{{title}}" with {{host}}.
+
+Date: {{date}}
+Time: {{time_only}}
+Timezone: {{timezone}}
 
 Why this matters: most first-time buyers leave money on the table because they don't know how down payment assistance, credits, and pre-approval timing actually work.
 
