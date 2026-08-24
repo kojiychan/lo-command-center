@@ -4,6 +4,7 @@ import type { ReminderEvent, Webinar, WebinarPage } from "@/types/database";
 import type { OverviewStats } from "@/components/webinars/workspace/types";
 import { Button } from "@/components/ui/button";
 import { updateWebinarContent } from "@/app/actions/webinars";
+import { extractMetaPixelId } from "@/lib/meta-pixel";
 
 export function OverviewTab({
   webinar,
@@ -59,6 +60,10 @@ export function OverviewTab({
               <dd className="text-slate-900">{webinar.cta_text}</dd>
             </div>
           ) : null}
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Meta Pixel</dt>
+            <dd className="text-slate-900">{page.meta_pixel_id || "Not connected"}</dd>
+          </div>
         </dl>
       </div>
 
@@ -113,6 +118,31 @@ export function OverviewTab({
               rows={3}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
             />
+          </label>
+          <label className="block space-y-1.5 lg:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Meta Pixel ID</span>
+            <input
+              name="meta_pixel_id"
+              inputMode="numeric"
+              pattern="[0-9]{5,30}"
+              placeholder="123456789012345"
+              defaultValue={page.meta_pixel_id ?? ""}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData("text");
+                const extracted = extractMetaPixelId(pasted);
+                if (extracted !== pasted) {
+                  event.preventDefault();
+                  event.currentTarget.value = extracted;
+                }
+              }}
+              onBlur={(event) => {
+                event.currentTarget.value = extractMetaPixelId(event.currentTarget.value);
+              }}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4"
+            />
+            <span className="text-xs text-slate-500">
+              Optional. Tracks page views and completed registrations on this webinar landing page.
+            </span>
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hero bullets</span>

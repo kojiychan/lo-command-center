@@ -15,6 +15,7 @@ declare global {
 
 export function MetaPixel({ pixelId }: MetaPixelProps) {
   if (!pixelId) return null;
+  const serializedPixelId = JSON.stringify(pixelId);
 
   return (
     <>
@@ -31,7 +32,7 @@ export function MetaPixel({ pixelId }: MetaPixelProps) {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
+            fbq('init', ${serializedPixelId});
             fbq('track', 'PageView');
           `,
         }}
@@ -50,18 +51,34 @@ export function MetaPixel({ pixelId }: MetaPixelProps) {
   );
 }
 
-export function trackMetaLead(pixelId: string | null, eventId: string, webinarTitle: string) {
+export function trackMetaCompleteRegistration(
+  pixelId: string | null,
+  eventId: string,
+  webinarTitle: string,
+) {
   if (!pixelId || typeof window === "undefined" || typeof window.fbq !== "function") {
     return;
   }
 
   window.fbq(
     "track",
-    "Lead",
+    "CompleteRegistration",
     {
       content_name: webinarTitle,
       content_category: "Webinar registration",
+      status: "complete",
     },
     { eventID: eventId },
   );
+}
+
+export function trackMetaRegistrationAttempt(pixelId: string | null, webinarTitle: string) {
+  if (!pixelId || typeof window === "undefined" || typeof window.fbq !== "function") {
+    return;
+  }
+
+  window.fbq("trackCustom", "WebinarRegistrationSubmit", {
+    content_name: webinarTitle,
+    content_category: "Webinar registration",
+  });
 }

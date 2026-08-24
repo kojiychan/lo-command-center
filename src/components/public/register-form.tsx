@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { registerForWebinar, type RegisterState } from "@/app/actions/register";
-import { trackMetaLead } from "@/components/analytics/meta-pixel";
+import {
+  trackMetaCompleteRegistration,
+  trackMetaRegistrationAttempt,
+} from "@/components/analytics/meta-pixel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUserTimezone } from "@/hooks/use-user-timezone";
@@ -38,10 +41,24 @@ function calendarLinks({
   };
 }
 
-function Submit({ label }: { label: string }) {
+function Submit({
+  label,
+  metaPixelId,
+  webinarTitle,
+}: {
+  label: string;
+  metaPixelId: string | null;
+  webinarTitle: string;
+}) {
   const { pending } = useFormStatus();
   return (
-    <Button className="w-full" type="submit" disabled={pending}>
+    <Button
+      className="w-full"
+      type="submit"
+      disabled={pending}
+      data-meta-event="WebinarRegistrationSubmit"
+      onClick={() => trackMetaRegistrationAttempt(metaPixelId, webinarTitle)}
+    >
       {pending ? "Reserving…" : label}
     </Button>
   );
@@ -51,10 +68,12 @@ export function RegisterForm({
   slug,
   ctaLabel,
   metaPixelId,
+  webinarTitle,
 }: {
   slug: string;
   ctaLabel: string;
   metaPixelId: string | null;
+  webinarTitle: string;
 }) {
   const [state, formAction] = useFormState(registerForWebinar, initialState);
   const userTz = useUserTimezone();
@@ -66,7 +85,7 @@ export function RegisterForm({
     }
 
     trackedLeadId.current = state.leadId;
-    trackMetaLead(metaPixelId, state.leadId, state.webinarTitle);
+    trackMetaCompleteRegistration(metaPixelId, state.leadId, state.webinarTitle);
   }, [metaPixelId, state]);
 
   if (state.status === "success") {
@@ -147,7 +166,7 @@ export function RegisterForm({
         </div>
       ) : null}
 
-      <Submit label={ctaLabel} />
+      <Submit label={ctaLabel} metaPixelId={metaPixelId} webinarTitle={webinarTitle} />
       <div className="text-xs text-slate-600">
         <span className="font-semibold text-slate-900">Free to attend.</span>{" "}
         We’ll send reminders and a join link after you register.

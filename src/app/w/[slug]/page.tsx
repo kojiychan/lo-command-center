@@ -152,6 +152,7 @@ export default async function PublicWebinarPage({ params }: { params: { slug: st
                     slug={data.slug}
                     ctaLabel={data.button_text || template.defaultCTA}
                     metaPixelId={data.meta_pixel_id}
+                    webinarTitle={w.title}
                   />
                 </div>
 
