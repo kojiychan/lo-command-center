@@ -51,9 +51,10 @@ export function MetaPixel({ pixelId }: MetaPixelProps) {
   );
 }
 
-export function trackMetaCompleteRegistration(
+export function trackMetaLead(
   pixelId: string | null,
   eventId: string,
+  contentName: string,
   webinarTitle: string,
 ) {
   if (!pixelId || typeof window === "undefined" || typeof window.fbq !== "function") {
@@ -62,23 +63,13 @@ export function trackMetaCompleteRegistration(
 
   window.fbq(
     "track",
-    "CompleteRegistration",
+    "Lead",
     {
-      content_name: webinarTitle,
+      content_name: contentName,
+      webinar_title: webinarTitle,
+      content_type: "webinar",
       content_category: "Webinar registration",
-      status: "complete",
     },
     { eventID: eventId },
   );
-}
-
-export function trackMetaRegistrationAttempt(pixelId: string | null, webinarTitle: string) {
-  if (!pixelId || typeof window === "undefined" || typeof window.fbq !== "function") {
-    return;
-  }
-
-  window.fbq("trackCustom", "WebinarRegistrationSubmit", {
-    content_name: webinarTitle,
-    content_category: "Webinar registration",
-  });
 }

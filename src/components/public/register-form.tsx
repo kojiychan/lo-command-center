@@ -3,10 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { registerForWebinar, type RegisterState } from "@/app/actions/register";
-import {
-  trackMetaCompleteRegistration,
-  trackMetaRegistrationAttempt,
-} from "@/components/analytics/meta-pixel";
+import { trackMetaLead } from "@/components/analytics/meta-pixel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUserTimezone } from "@/hooks/use-user-timezone";
@@ -41,24 +38,10 @@ function calendarLinks({
   };
 }
 
-function Submit({
-  label,
-  metaPixelId,
-  webinarTitle,
-}: {
-  label: string;
-  metaPixelId: string | null;
-  webinarTitle: string;
-}) {
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button
-      className="w-full"
-      type="submit"
-      disabled={pending}
-      data-meta-event="WebinarRegistrationSubmit"
-      onClick={() => trackMetaRegistrationAttempt(metaPixelId, webinarTitle)}
-    >
+    <Button className="w-full" type="submit" disabled={pending}>
       {pending ? "Reserving…" : label}
     </Button>
   );
@@ -68,12 +51,10 @@ export function RegisterForm({
   slug,
   ctaLabel,
   metaPixelId,
-  webinarTitle,
 }: {
   slug: string;
   ctaLabel: string;
   metaPixelId: string | null;
-  webinarTitle: string;
 }) {
   const [state, formAction] = useFormState(registerForWebinar, initialState);
   const userTz = useUserTimezone();
@@ -85,8 +66,8 @@ export function RegisterForm({
     }
 
     trackedLeadId.current = state.leadId;
-    trackMetaCompleteRegistration(metaPixelId, state.leadId, state.webinarTitle);
-  }, [metaPixelId, state]);
+    trackMetaLead(metaPixelId, state.leadId, slug, state.webinarTitle);
+  }, [metaPixelId, slug, state]);
 
   if (state.status === "success") {
     const links = calendarLinks({
@@ -166,7 +147,7 @@ export function RegisterForm({
         </div>
       ) : null}
 
-      <Submit label={ctaLabel} metaPixelId={metaPixelId} webinarTitle={webinarTitle} />
+      <Submit label={ctaLabel} />
       <div className="text-xs text-slate-600">
         <span className="font-semibold text-slate-900">Free to attend.</span>{" "}
         We’ll send reminders and a join link after you register.
