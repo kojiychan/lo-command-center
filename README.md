@@ -48,12 +48,15 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=
+BONZO_API_TOKEN=
+BONZO_BASE_URL=https://app.getbonzo.com/api/v3
 ```
 
 Notes:
 
 - `SUPABASE_SERVICE_ROLE_KEY` is used only on the server for public registration and public landing page reads that intentionally bypass anonymous table exposure.
 - `NEXT_PUBLIC_SITE_URL` is used for Supabase email confirmation redirects.
+- `BONZO_API_TOKEN` and `BONZO_BASE_URL` are server-only; the browser uses authenticated internal API routes for pipeline/stage dropdowns.
 - Reminder sending is mocked. No SendGrid/Twilio credentials are currently used.
 
 ## Database

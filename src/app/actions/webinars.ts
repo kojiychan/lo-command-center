@@ -93,7 +93,42 @@ const webinarEditSchema = z.object({
       z.literal(""),
     ])
     .optional(),
+  bonzo_pipeline_id: z.string().trim().nullable().optional(),
+  bonzo_pipeline_name: z.string().trim().nullable().optional(),
+  bonzo_stage_id: z.string().trim().nullable().optional(),
+  bonzo_stage_name: z.string().trim().nullable().optional(),
 });
+
+function bonzoFieldsFromFormData(formData: FormData) {
+  const stageId = String(formData.get("bonzo_stage_id") ?? "").trim();
+
+  if (!stageId) {
+    return {
+      bonzo_pipeline_id: null,
+      bonzo_pipeline_name: null,
+      bonzo_stage_id: null,
+      bonzo_stage_name: null,
+    };
+  }
+
+  return {
+    bonzo_pipeline_id: String(formData.get("bonzo_pipeline_id") ?? "").trim() || null,
+    bonzo_pipeline_name: String(formData.get("bonzo_pipeline_name") ?? "").trim() || null,
+    bonzo_stage_id: stageId,
+    bonzo_stage_name: String(formData.get("bonzo_stage_name") ?? "").trim() || null,
+  };
+}
+
+function bonzoUpdateFieldsFromFormData(formData: FormData) {
+  const fields = bonzoFieldsFromFormData(formData);
+
+  return {
+    bonzoPipelineId: fields.bonzo_pipeline_id,
+    bonzoPipelineName: fields.bonzo_pipeline_name,
+    bonzoStageId: fields.bonzo_stage_id,
+    bonzoStageName: fields.bonzo_stage_name,
+  };
+}
 
 function optionalText(value: string | undefined) {
   const text = value?.trim() ?? "";
@@ -301,6 +336,7 @@ export async function createWebinar(formData: FormData) {
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? "").trim(),
     meta_pixel_id: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")),
+    ...bonzoFieldsFromFormData(formData),
     hero_image_url: "",
     slug: rawSlug,
   });
@@ -359,6 +395,7 @@ export async function updateWebinarContent(formData: FormData) {
     heroBullets: linesFromFormValue(formData.get("hero_bullets")),
     agendaItems: linesFromFormValue(formData.get("agenda_items")),
     buttonText,
+    ...(formData.has("bonzo_stage_id") ? bonzoUpdateFieldsFromFormData(formData) : {}),
     ...(formData.has("meta_pixel_id")
       ? { metaPixelId: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")) || null }
       : {}),
@@ -396,6 +433,7 @@ export async function updateWebinarDetails(formData: FormData) {
     agenda_items: linesFromFormValue(formData.get("agenda_items")),
     button_text: String(formData.get("button_text") ?? ""),
     meta_pixel_id: extractMetaPixelId(String(formData.get("meta_pixel_id") ?? "")),
+    ...bonzoFieldsFromFormData(formData),
   });
 
   if (!parsed.success) {
@@ -415,6 +453,10 @@ export async function updateWebinarDetails(formData: FormData) {
     agendaItems: parsed.data.agenda_items,
     buttonText: parsed.data.button_text,
     metaPixelId: parsed.data.meta_pixel_id || null,
+    bonzoPipelineId: parsed.data.bonzo_pipeline_id,
+    bonzoPipelineName: parsed.data.bonzo_pipeline_name,
+    bonzoStageId: parsed.data.bonzo_stage_id,
+    bonzoStageName: parsed.data.bonzo_stage_name,
   });
 
   if ("error" in result) {

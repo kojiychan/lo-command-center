@@ -18,6 +18,10 @@ export type WebinarContentUpdateInput = {
   agendaItems: string[];
   buttonText: string;
   metaPixelId?: string | null;
+  bonzoPipelineId?: string | null;
+  bonzoPipelineName?: string | null;
+  bonzoStageId?: string | null;
+  bonzoStageName?: string | null;
 };
 
 export async function createWebinarForUser(userId: string, input: WebinarFormInput) {
@@ -40,6 +44,10 @@ export async function createWebinarForUser(userId: string, input: WebinarFormInp
       host_name: input.host_name,
       cta_text: input.cta_text ?? null,
       join_url: input.join_url,
+      bonzo_pipeline_id: input.bonzo_pipeline_id ?? null,
+      bonzo_pipeline_name: input.bonzo_pipeline_name ?? null,
+      bonzo_stage_id: input.bonzo_stage_id ?? null,
+      bonzo_stage_name: input.bonzo_stage_name ?? null,
     })
     .select("id")
     .single();
@@ -122,6 +130,14 @@ export async function updateWebinarContentForUser(
       ...(input.timezone ? { timezone: input.timezone } : {}),
       ...(input.joinUrl ? { join_url: input.joinUrl } : {}),
       cta_text: input.ctaText,
+      ...(typeof input.bonzoStageId !== "undefined"
+        ? {
+            bonzo_pipeline_id: input.bonzoPipelineId ?? null,
+            bonzo_pipeline_name: input.bonzoPipelineName ?? null,
+            bonzo_stage_id: input.bonzoStageId ?? null,
+            bonzo_stage_name: input.bonzoStageName ?? null,
+          }
+        : {}),
     })
     .eq("id", webinarId);
 

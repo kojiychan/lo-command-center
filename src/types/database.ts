@@ -60,6 +60,10 @@ export type Webinar = {
   host_name: string;
   cta_text: string | null;
   join_url: string;
+  bonzo_pipeline_id: string | null;
+  bonzo_pipeline_name: string | null;
+  bonzo_stage_id: string | null;
+  bonzo_stage_name: string | null;
   created_at: string;
   updated_at: string;
 };

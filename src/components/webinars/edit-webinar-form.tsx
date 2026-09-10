@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import { useMemo, useState } from "react";
 import { updateWebinarDetails } from "@/app/actions/webinars";
+import { BonzoStageSelector } from "@/components/webinars/bonzo-stage-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -250,6 +251,14 @@ export function EditWebinarForm({ webinar, page }: EditWebinarFormProps) {
               event.currentTarget.value = extractMetaPixelId(event.currentTarget.value);
             }}
             hint="Optional. Tracks landing page views and webinar registrations for Meta ads."
+          />
+          <BonzoStageSelector
+            initialSelection={{
+              pipelineId: webinar.bonzo_pipeline_id,
+              pipelineName: webinar.bonzo_pipeline_name,
+              stageId: webinar.bonzo_stage_id,
+              stageName: webinar.bonzo_stage_name,
+            }}
           />
         </div>
 

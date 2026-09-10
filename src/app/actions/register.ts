@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildDefaultReminderSchedule } from "@/lib/reminder-schedule";
-import { sendTemplateEmail } from "@/server/services/email";
+import { syncRegistrantToBonzoStage } from "@/server/services/bonzo";
+import { sendSignupConfirmationEmail } from "@/server/services/email";
 import { sendTemplateSms } from "@/server/services/sms";
 
 const registrationSchema = z.object({
@@ -25,6 +26,7 @@ export type RegisterState =
       webinarTitle: string;
       startsAt: string;
       timezone: string;
+      emailWarning?: string;
     };
 
 export async function registerForWebinar(
@@ -65,7 +67,7 @@ export async function registerForWebinar(
 
   const { data: webinar, error: webinarError } = await admin
     .from("webinars")
-    .select("title, join_url, starts_at, timezone")
+    .select("title, join_url, starts_at, timezone, bonzo_stage_id")
     .eq("id", page.webinar_id)
     .maybeSingle();
 
@@ -98,6 +100,35 @@ export async function registerForWebinar(
     return { status: "error", message: insertError.message };
   }
 
+  if (webinar.bonzo_stage_id) {
+    const bonzoResult = await syncRegistrantToBonzoStage({
+      webinarId: page.webinar_id,
+      leadId: inserted.id,
+      stageId: webinar.bonzo_stage_id,
+      firstName: parsed.data.first_name,
+      lastName: parsed.data.last_name,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+    });
+
+    if ("error" in bonzoResult) {
+      console.error("bonzo_sync_failed", {
+        webinarId: page.webinar_id,
+        registrationId: inserted.id,
+        bonzoStageId: webinar.bonzo_stage_id,
+        error: bonzoResult.error,
+      });
+    } else if ("ok" in bonzoResult) {
+      console.log("bonzo_sync_success", {
+        webinarId: page.webinar_id,
+        registrationId: inserted.id,
+        bonzoStageId: webinar.bonzo_stage_id,
+        action: bonzoResult.action,
+        prospectId: bonzoResult.prospectId,
+      });
+    }
+  }
+
   const { data: templates, error: templatesError } = await admin
     .from("reminder_templates")
     .select("*")
@@ -120,6 +151,10 @@ export async function registerForWebinar(
   }> = [];
 
   for (const item of schedule) {
+    if (item.template_key === "confirmation") {
+      continue;
+    }
+
     const template = templates?.find((t) => t.template_key === item.template_key);
     if (!template) {
       continue;
@@ -158,40 +193,42 @@ export async function registerForWebinar(
   }
 
   const confirmationTemplate = templates?.find((t) => t.template_key === "confirmation");
-  if (confirmationTemplate?.email_enabled || confirmationTemplate?.sms_enabled) {
-    const { data: owner } = await admin
-      .from("webinars")
-      .select("user_id")
-      .eq("id", page.webinar_id)
-      .maybeSingle();
+  const { data: owner } = await admin
+    .from("webinars")
+    .select("user_id")
+    .eq("id", page.webinar_id)
+    .maybeSingle();
 
-    if (owner?.user_id) {
-      if (confirmationTemplate.email_enabled) {
-        const emailResult = await sendTemplateEmail({
-          userId: owner.user_id,
-          webinarId: page.webinar_id,
-          leadId: inserted.id,
-          templateKey: "confirmation",
-        });
+  let emailWarning: string | undefined;
 
-        if ("error" in emailResult) {
-          console.error("Confirmation email failed:", emailResult.error);
-        }
-      }
+  if (owner?.user_id) {
+    const emailResult = await sendSignupConfirmationEmail({
+      userId: owner.user_id,
+      webinarId: page.webinar_id,
+      leadId: inserted.id,
+    });
 
-      if (confirmationTemplate.sms_enabled) {
-        const smsResult = await sendTemplateSms({
-          userId: owner.user_id,
-          webinarId: page.webinar_id,
-          leadId: inserted.id,
-          templateKey: "confirmation",
-        });
+    if ("error" in emailResult) {
+      emailWarning =
+        "You are registered, but we could not send the confirmation email. Please save the join link below.";
+      console.error("Confirmation email failed:", emailResult.error);
+    }
 
-        if ("error" in smsResult) {
-          console.error("Confirmation SMS failed:", smsResult.error);
-        }
+    if (confirmationTemplate?.sms_enabled) {
+      const smsResult = await sendTemplateSms({
+        userId: owner.user_id,
+        webinarId: page.webinar_id,
+        leadId: inserted.id,
+        templateKey: "confirmation",
+      });
+
+      if ("error" in smsResult) {
+        console.error("Confirmation SMS failed:", smsResult.error);
       }
     }
+  } else {
+    emailWarning =
+      "You are registered, but we could not send the confirmation email. Please save the join link below.";
   }
 
   return {
@@ -201,5 +238,6 @@ export async function registerForWebinar(
     webinarTitle: webinar.title,
     startsAt: webinar.starts_at,
     timezone: webinar.timezone,
+    emailWarning,
   };
 }

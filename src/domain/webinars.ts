@@ -24,6 +24,10 @@ export const webinarFormSchema = z.object({
       z.literal(""),
     ])
     .optional(),
+  bonzo_pipeline_id: z.string().trim().nullable().optional(),
+  bonzo_pipeline_name: z.string().trim().nullable().optional(),
+  bonzo_stage_id: z.string().trim().nullable().optional(),
+  bonzo_stage_name: z.string().trim().nullable().optional(),
   slug: z.string().min(1),
 });
 

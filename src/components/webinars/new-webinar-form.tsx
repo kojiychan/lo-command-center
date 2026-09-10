@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createWebinar } from "@/app/actions/webinars";
 import { Button } from "@/components/ui/button";
+import { BonzoStageSelector } from "@/components/webinars/bonzo-stage-selector";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserTimezone } from "@/hooks/use-user-timezone";
@@ -341,6 +342,7 @@ export function NewWebinarForm({ hostName }: NewWebinarFormProps) {
             }}
             hint="Optional. Tracks landing page views and webinar registrations for Meta ads."
           />
+          <BonzoStageSelector />
         </div>
 
         <div className="space-y-4">

@@ -2,6 +2,7 @@
 
 import type { ReminderEvent, Webinar, WebinarPage } from "@/types/database";
 import type { OverviewStats } from "@/components/webinars/workspace/types";
+import { BonzoStageSelector } from "@/components/webinars/bonzo-stage-selector";
 import { Button } from "@/components/ui/button";
 import { updateWebinarContent } from "@/app/actions/webinars";
 import { extractMetaPixelId } from "@/lib/meta-pixel";
@@ -63,6 +64,14 @@ export function OverviewTab({
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Meta Pixel</dt>
             <dd className="text-slate-900">{page.meta_pixel_id || "Not connected"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bonzo CRM</dt>
+            <dd className="text-slate-900">
+              {webinar.bonzo_stage_name
+                ? `${webinar.bonzo_pipeline_name ?? "Selected pipeline"} / ${webinar.bonzo_stage_name}`
+                : "Not connected"}
+            </dd>
           </div>
         </dl>
       </div>
@@ -144,6 +153,16 @@ export function OverviewTab({
               Optional. Tracks page views and completed registrations on this webinar landing page.
             </span>
           </label>
+          <div className="lg:col-span-2">
+            <BonzoStageSelector
+              initialSelection={{
+                pipelineId: webinar.bonzo_pipeline_id,
+                pipelineName: webinar.bonzo_pipeline_name,
+                stageId: webinar.bonzo_stage_id,
+                stageName: webinar.bonzo_stage_name,
+              }}
+            />
+          </div>
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hero bullets</span>
             <textarea
