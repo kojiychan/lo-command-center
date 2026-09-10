@@ -202,16 +202,18 @@ export async function registerForWebinar(
   let emailWarning: string | undefined;
 
   if (owner?.user_id) {
-    const emailResult = await sendSignupConfirmationEmail({
-      userId: owner.user_id,
-      webinarId: page.webinar_id,
-      leadId: inserted.id,
-    });
+    if (confirmationTemplate?.email_enabled) {
+      const emailResult = await sendSignupConfirmationEmail({
+        userId: owner.user_id,
+        webinarId: page.webinar_id,
+        leadId: inserted.id,
+      });
 
-    if ("error" in emailResult) {
-      emailWarning =
-        "You are registered, but we could not send the confirmation email. Please save the join link below.";
-      console.error("Confirmation email failed:", emailResult.error);
+      if ("error" in emailResult) {
+        emailWarning =
+          "You are registered, but we could not send the confirmation email. Please save the join link below.";
+        console.error("Confirmation email failed:", emailResult.error);
+      }
     }
 
     if (confirmationTemplate?.sms_enabled) {

@@ -34,7 +34,7 @@ Join link (save this): {{join_link}}
 See you soon,
 {{host}}`,
     sms_body: `{{first_name}}, you're registered for "{{title}}" with {{host}}. Calendar it now — link: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -52,7 +52,7 @@ Join link: {{join_link}}
 
 — {{host}}`,
     sms_body: `Reminder: "{{title}}" is in 24 hours. Starts at {{user_local_time}} your time. Join: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -68,7 +68,7 @@ Join link: {{join_link}}
 
 — {{host}}`,
     sms_body: `Reminder: "{{title}}" is today with {{host}}. Join: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -84,7 +84,7 @@ Join link: {{join_link}}
 
 — {{host}}`,
     sms_body: `1 hour until "{{title}}" with {{host}}. Join: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -100,7 +100,7 @@ If you're on your phone, you can still join — just tap the link:
 
 — {{host}}`,
     sms_body: `10 min countdown — "{{title}}" with {{host}}. Join: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -114,7 +114,7 @@ We just started "{{title}}" — you're not late. Jump in here:
 
 — {{host}}`,
     sms_body: `We're LIVE: "{{title}}" with {{host}}. Join now: {{join_link}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -132,7 +132,7 @@ No pressure — just clarity.
 
 — {{host}}`,
     sms_body: `{{first_name}}, great having you at "{{title}}". Want a 15-min plan? Reply BOOK and {{host}} will send times.`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -148,7 +148,7 @@ Book a time here: {{book_call_link}}
 
 — {{host}}`,
     sms_body: `{{first_name}}, thanks for joining. Want your personalized plan? Reply BOOK and {{host}} will send times.`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -164,7 +164,7 @@ Grab a time here: {{book_call_link}}
 
 — {{host}}`,
     sms_body: `{{first_name}}, sorry we missed you. Want a quick 1:1 homebuyer plan instead? Reply YES and {{host}} will send times.`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -179,7 +179,7 @@ To make it useful, bring rough monthly budget goals, income questions, and any q
 Talk soon,
 {{host}}`,
     sms_body: `{{first_name}}, before our call: bring budget goals + questions about credit/DPA/timing. Talk soon — {{host}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
   {
@@ -195,7 +195,7 @@ I’ll follow up with your next checklist shortly.
 
 — {{host}}`,
     sms_body: `{{first_name}}, welcome aboard. Next up: onboarding checklist + document steps. I’ll send details shortly — {{host}}`,
-    email_enabled: true,
+    email_enabled: false,
     sms_enabled: true,
   },
 ];

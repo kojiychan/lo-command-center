@@ -75,7 +75,7 @@ async function getEnabledChannels(
         .maybeSingle()
     ).data;
 
-  const emailEnabled = template?.email_enabled ?? true;
+  const emailEnabled = template?.email_enabled ?? false;
   const smsEnabled = template?.sms_enabled ?? true;
 
   return [
