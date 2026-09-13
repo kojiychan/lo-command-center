@@ -154,9 +154,7 @@ export function BonzoStageSelector({ initialSelection }: BonzoStageSelectorProps
 
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <input type="hidden" name="bonzo_pipeline_id" value={pipelineId} />
       <input type="hidden" name="bonzo_pipeline_name" value={effectivePipelineName} />
-      <input type="hidden" name="bonzo_stage_id" value={stageId} />
       <input type="hidden" name="bonzo_stage_name" value={effectiveStageName} />
 
       <div>
@@ -170,9 +168,14 @@ export function BonzoStageSelector({ initialSelection }: BonzoStageSelectorProps
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-slate-700">Pipeline</span>
           <select
+            name="bonzo_pipeline_id"
             value={pipelineId}
             onChange={(event) => {
-              setPipelineId(event.target.value);
+              const nextPipelineId = event.target.value;
+              const nextPipelineName =
+                event.target.selectedOptions[0]?.dataset.pipelineName ?? "";
+              setPipelineId(nextPipelineId);
+              setPipelineName(nextPipelineName);
               setStageId("");
               setStageName("");
             }}
@@ -183,7 +186,7 @@ export function BonzoStageSelector({ initialSelection }: BonzoStageSelectorProps
               {loadingPipelines ? "Loading Bonzo pipelines..." : "No Bonzo integration"}
             </option>
             {pipelines.map((pipeline) => (
-              <option key={pipeline.id} value={pipeline.id}>
+              <option key={pipeline.id} value={pipeline.id} data-pipeline-name={pipeline.name}>
                 {pipeline.name}
               </option>
             ))}
@@ -193,11 +196,13 @@ export function BonzoStageSelector({ initialSelection }: BonzoStageSelectorProps
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-slate-700">Stage</span>
           <select
+            name="bonzo_stage_id"
             value={stageId}
             onChange={(event) => {
               const nextStageId = event.target.value;
+              const nextStageName = event.target.selectedOptions[0]?.dataset.stageName ?? "";
               setStageId(nextStageId);
-              setStageName(stages.find((stage) => stage.id === nextStageId)?.name ?? "");
+              setStageName(nextStageName);
             }}
             disabled={!pipelineId || loadingStages}
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-4 disabled:bg-slate-100 disabled:text-slate-500"
@@ -210,7 +215,7 @@ export function BonzoStageSelector({ initialSelection }: BonzoStageSelectorProps
                   : "No Bonzo integration"}
             </option>
             {stages.map((stage) => (
-              <option key={stage.id} value={stage.id}>
+              <option key={stage.id} value={stage.id} data-stage-name={stage.name}>
                 {stage.name}
               </option>
             ))}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { updateWebinarDetails } from "@/app/actions/webinars";
 import { BonzoStageSelector } from "@/components/webinars/bonzo-stage-selector";
@@ -46,6 +47,7 @@ function initialTimeParts(startsAt: string, timezone: string) {
 }
 
 export function EditWebinarForm({ webinar, page }: EditWebinarFormProps) {
+  const router = useRouter();
   const timezoneOptions = useMemo(() => buildTimezoneOptions(new Date(webinar.starts_at)), [webinar.starts_at]);
   const initial = initialTimeParts(webinar.starts_at, webinar.timezone);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +108,7 @@ export function EditWebinarForm({ webinar, page }: EditWebinarFormProps) {
         }
 
         setSaved(true);
+        router.refresh();
       }}
     >
       <input type="hidden" name="webinar_id" value={webinar.id} />
